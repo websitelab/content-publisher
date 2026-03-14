@@ -109,7 +109,7 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl) {
 
   try {
     const result = await resend.emails.send({
-      from: 'Blog Publisher <blog@send.websitelab.biz>',
+      from: 'David Peyton <david@send.websitelab.biz>',
       to: site.reviewEmail,
       subject,
       html,
