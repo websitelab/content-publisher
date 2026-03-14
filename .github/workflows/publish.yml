@@ -25,3 +25,5 @@ jobs:
           GITHUB_PAT: ${{ secrets.ORG_GITHUB_PAT }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REVIEW_SECRET: ${{ secrets.REVIEW_SECRET }}
+          REVIEW_API_URL: https://blog-publisher-iota.vercel.app
