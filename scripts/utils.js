@@ -53,8 +53,14 @@ export function validatePost(post) {
   const missing = required.filter(f => !post[f]);
 
   if (post.tags && !Array.isArray(post.tags)) missing.push('tags (not an array)');
-  if (post.title && post.title.length > 70) missing.push('title (over 70 chars)');
-  if (post.description && post.description.length > 160) missing.push('description (over 160 chars)');
+
+  // Auto-truncate instead of failing
+  if (post.title && post.title.length > 70) {
+    post.title = post.title.slice(0, 67) + '...';
+  }
+  if (post.description && post.description.length > 160) {
+    post.description = post.description.slice(0, 157) + '...';
+  }
 
   return missing;
 }
