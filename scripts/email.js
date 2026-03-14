@@ -3,6 +3,7 @@
  */
 
 import { Resend } from 'resend';
+import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,8 @@ import { log } from './utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const template = readFileSync(join(__dirname, '..', 'templates', 'review-email.html'), 'utf-8');
+
+const REVIEW_API_BASE = process.env.REVIEW_API_URL || 'https://blog-publisher-websitelab.vercel.app';
 
 const SUBJECT_TEMPLATES = [
   (s, t) => `New post for ${s}: "${t}"`,
@@ -63,7 +66,16 @@ function stripMarkdown(text) {
     .trim();
 }
 
-function buildEmailHtml({ title, body, previewUrl, prUrl, siteName }) {
+function createReviewToken(repo, prNumber) {
+  const secret = process.env.REVIEW_SECRET;
+  if (!secret) return null;
+  const payload = `${repo}:${prNumber}`;
+  const sig = createHmac('sha256', secret).update(payload).digest('hex');
+  const data = Buffer.from(JSON.stringify({ repo, pr: prNumber })).toString('base64url');
+  return `${data}.${sig}`;
+}
+
+function buildEmailHtml({ title, body, previewUrl, approveUrl, denyUrl, feedbackUrl, siteName }) {
   const greeting = pick(GREETINGS);
   const summary = pick(SUMMARIES)(siteName, title);
   const plainPreview = stripMarkdown(body);
@@ -75,18 +87,14 @@ function buildEmailHtml({ title, body, previewUrl, prUrl, siteName }) {
     .replace('{{title}}', title)
     .replace('{{preview}}', preview)
     .replace('{{previewUrl}}', previewUrl)
-    .replace(/\{\{prUrl\}\}/g, prUrl)
+    .replace('{{approveUrl}}', approveUrl)
+    .replace('{{denyUrl}}', denyUrl)
+    .replace('{{feedbackUrl}}', feedbackUrl)
     .replace('{{siteName}}', siteName);
 }
 
 /**
  * Send a review email for a generated blog post.
- *
- * @param {object} site - Site config from sites.json
- * @param {object} post - Generated post data (title, description, body, tags)
- * @param {string} prUrl - GitHub PR URL
- * @param {string} previewUrl - Vercel preview deployment URL (or PR URL as fallback)
- * @param {string} slug - Blog post slug for constructing the direct post URL
  */
 export async function sendReviewEmail(site, post, prUrl, previewUrl, slug) {
   if (!process.env.RESEND_API_KEY) {
@@ -107,11 +115,28 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug) {
     blogPreviewUrl = `${base}/blog/${slug}.html`;
   }
 
+  // Build review action URLs
+  const prNumber = prUrl.match(/\/pull\/(\d+)/)?.[1];
+  const token = createReviewToken(site.repo, prNumber);
+  const base = REVIEW_API_BASE.replace(/\/$/, '');
+
+  const approveUrl = token
+    ? `${base}/api/approve?token=${token}`
+    : `${prUrl}/merge`;
+  const denyUrl = token
+    ? `${base}/api/deny?token=${token}`
+    : `${prUrl}/close`;
+  const feedbackUrl = token
+    ? `${base}/api/feedback?token=${token}`
+    : `${prUrl}#issuecomment-new`;
+
   const html = buildEmailHtml({
     title: post.title,
     body: post.body,
     previewUrl: blogPreviewUrl,
-    prUrl,
+    approveUrl,
+    denyUrl,
+    feedbackUrl,
     siteName,
   });
 

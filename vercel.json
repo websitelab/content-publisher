@@ -1,0 +1,10 @@
+{
+  "buildCommand": "",
+  "outputDirectory": "",
+  "framework": null,
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "@vercel/node@latest"
+    }
+  }
+}
