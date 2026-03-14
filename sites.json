@@ -1,37 +1,5 @@
 [
   {
-    "repo": "websitelab/blastingjack",
-    "contentPath": "src/content/blog",
-    "imagePath": "public/images/blog",
-    "industry": "sandblasting and surface preparation",
-    "tone": "blue collar, straightforward",
-    "audience": "property managers, contractors, industrial facility managers",
-    "siteUrl": "https://blastingjack.com",
-    "author": "Blasting Jack",
-    "reviewEmail": "review@websitelab.dev",
-    "internalLinks": [
-      { "path": "/services", "label": "our services" },
-      { "path": "/about", "label": "about us" },
-      { "path": "/contact", "label": "get a free quote" }
-    ]
-  },
-  {
-    "repo": "websitelab/pro-handyman.services",
-    "contentPath": "src/content/blog",
-    "imagePath": "public/images/blog",
-    "industry": "handyman and home repair",
-    "tone": "friendly, helpful, local",
-    "audience": "homeowners in Fairfield County CT",
-    "siteUrl": "https://pro-handyman.services",
-    "author": "Pro Handyman",
-    "reviewEmail": "review@websitelab.dev",
-    "internalLinks": [
-      { "path": "/services", "label": "our services" },
-      { "path": "/about", "label": "about us" },
-      { "path": "/contact", "label": "contact us" }
-    ]
-  },
-  {
     "repo": "websitelab/websitelab.biz",
     "contentPath": "src/content/blog",
     "imagePath": "public/images/blog",
