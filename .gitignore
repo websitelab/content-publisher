@@ -1,0 +1,6 @@
+node_modules/
+.env
+history.json
+.loom/state.json
+.loom/worktrees/
+.loom/*.log

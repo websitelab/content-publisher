@@ -1,0 +1,16 @@
+{
+  "name": "blog-publisher",
+  "version": "1.0.0",
+  "description": "Automated blog publisher — Gemini Flash + GitHub API → Astro sites on Vercel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "publish": "node scripts/publish.js",
+    "test": "node scripts/publish.js --dry-run"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "octokit": "^4.1.0",
+    "sharp": "^0.33.0"
+  }
+}
