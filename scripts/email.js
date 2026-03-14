@@ -86,8 +86,9 @@ function buildEmailHtml({ title, body, previewUrl, prUrl, siteName }) {
  * @param {object} post - Generated post data (title, description, body, tags)
  * @param {string} prUrl - GitHub PR URL
  * @param {string} previewUrl - Vercel preview deployment URL (or PR URL as fallback)
+ * @param {string} slug - Blog post slug for constructing the direct post URL
  */
-export async function sendReviewEmail(site, post, prUrl, previewUrl) {
+export async function sendReviewEmail(site, post, prUrl, previewUrl, slug) {
   if (!process.env.RESEND_API_KEY) {
     log(site, 'RESEND_API_KEY not set, skipping review email');
     return null;
@@ -99,10 +100,17 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl) {
   const subjectFn = pick(SUBJECT_TEMPLATES);
   const subject = subjectFn(siteName, post.title);
 
+  // Build the direct blog post preview link
+  let blogPreviewUrl = prUrl;
+  if (previewUrl && slug) {
+    const base = previewUrl.replace(/\/$/, '');
+    blogPreviewUrl = `${base}/blog/${slug}.html`;
+  }
+
   const html = buildEmailHtml({
     title: post.title,
     body: post.body,
-    previewUrl: previewUrl || prUrl,
+    previewUrl: blogPreviewUrl,
     prUrl,
     siteName,
   });

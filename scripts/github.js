@@ -66,6 +66,49 @@ export async function checkExistingPR(repo) {
   );
 }
 
+export async function getVercelPreviewUrl(repo, commitSha, maxAttempts = 10) {
+  const { owner, repo: repoName } = parseOwnerRepo(repo);
+
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const { data: statuses } = await octokit.rest.repos.listCommitStatusesForRef({
+        owner,
+        repo: repoName,
+        ref: commitSha,
+      });
+
+      const vercelStatus = statuses.find(s =>
+        s.target_url?.includes('vercel') && s.state === 'success'
+      );
+
+      if (vercelStatus) return vercelStatus.target_url;
+
+      // Also check deployments
+      const { data: deployments } = await octokit.rest.repos.listDeployments({
+        owner,
+        repo: repoName,
+        sha: commitSha,
+      });
+
+      for (const dep of deployments) {
+        const { data: depStatuses } = await octokit.rest.repos.listDeploymentStatuses({
+          owner,
+          repo: repoName,
+          deployment_id: dep.id,
+        });
+        const success = depStatuses.find(s => s.state === 'success' && s.environment_url);
+        if (success) return success.environment_url;
+      }
+    } catch {
+      // ignore and retry
+    }
+
+    await new Promise(r => setTimeout(r, 10000));
+  }
+
+  return null;
+}
+
 export async function createBlogPR(repo, slug, markdownContent, imageBuffer, site) {
   const { owner, repo: repoName } = parseOwnerRepo(repo);
 
@@ -178,6 +221,8 @@ export async function createBlogPR(repo, slug, markdownContent, imageBuffer, sit
       log(site, 'Could not add labels — they may not exist in the repo');
     }
 
+    // Return PR with branch name for preview URL lookup
+    pr._branchName = branchName;
     return pr;
   } catch (err) {
     if (err.status === 403 || err.status === 401) {

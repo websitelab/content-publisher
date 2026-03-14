@@ -12,7 +12,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generatePost } from './generate.js';
 import { fetchHeroImage } from './images.js';
-import { getExistingTitles, checkExistingPR, createBlogPR } from './github.js';
+import { getExistingTitles, checkExistingPR, createBlogPR, getVercelPreviewUrl } from './github.js';
 import { sendReviewEmail } from './email.js';
 import { slugify, buildMarkdown, log, sleep } from './utils.js';
 
@@ -123,9 +123,17 @@ async function processSite(site) {
 
   log(site, `PR created: ${pr.html_url}`);
 
+  // Wait for Vercel preview deployment
+  log(site, 'Waiting for Vercel preview deployment...');
+  const previewUrl = await getVercelPreviewUrl(site.repo, pr.head.sha);
+  if (previewUrl) {
+    log(site, `Vercel preview: ${previewUrl}`);
+  } else {
+    log(site, 'Vercel preview not ready, using PR URL as fallback');
+  }
+
   // Send review email
-  const previewUrl = pr.html_url;
-  await sendReviewEmail(site, post, pr.html_url, previewUrl);
+  await sendReviewEmail(site, post, pr.html_url, previewUrl, slug);
 
   log(site, '--- Complete ---');
   return { site, status: 'published', pr: pr.html_url, slug };
