@@ -1,18 +1,16 @@
 import { Octokit } from 'octokit';
 import { verifyReviewToken, htmlResponse } from './utils.js';
 
-export default async function handler(req) {
-  const url = new URL(req.url, `https://${req.headers.get('host')}`);
-  const token = url.searchParams.get('token');
+export default async function handler(req, res) {
+  const token = req.query.token;
   const parsed = verifyReviewToken(token);
 
   if (!parsed) {
-    return htmlResponse('Invalid Link', 'This review link is invalid or has expired.', false);
+    return res.status(400).send(htmlResponse('Invalid Link', 'This review link is invalid or has expired.', false));
   }
 
-  // GET = show feedback form, POST = submit feedback
   if (req.method === 'GET') {
-    return new Response(`<!DOCTYPE html>
+    return res.send(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Leave Feedback</title>
 <style>
@@ -31,20 +29,15 @@ export default async function handler(req) {
     <textarea name="feedback" placeholder="e.g. Change the title, add more detail about pricing, make the tone more casual..." required></textarea>
     <button type="submit">Send Feedback</button>
   </form>
-</div></body></html>`, {
-      status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    });
+</div></body></html>`);
   }
 
   // POST = submit feedback as PR comment
   try {
-    const body = await req.text();
-    const params = new URLSearchParams(body);
-    const feedback = params.get('feedback');
+    const feedback = req.body?.feedback;
 
     if (!feedback || !feedback.trim()) {
-      return htmlResponse('No Feedback', 'Please go back and enter your feedback.', false);
+      return res.status(400).send(htmlResponse('No Feedback', 'Please go back and enter your feedback.', false));
     }
 
     const [owner, repo] = parsed.repo.split('/');
@@ -56,10 +49,8 @@ export default async function handler(req) {
       body: `**Reviewer feedback:**\n\n${feedback.trim()}`,
     });
 
-    return htmlResponse('Feedback Sent!', 'Your feedback has been received. We\'ll revise the post and send you an updated version. You can close this tab.');
+    return res.send(htmlResponse('Feedback Sent!', "Your feedback has been received. We'll revise the post and send you an updated version. You can close this tab."));
   } catch (err) {
-    return htmlResponse('Something Went Wrong', `Could not send feedback. Please reach out to David directly. (${err.message})`, false);
+    return res.status(500).send(htmlResponse('Something Went Wrong', `Could not send feedback. Please reach out to David directly. (${err.message})`, false));
   }
 }
-
-export const config = { runtime: 'edge' };

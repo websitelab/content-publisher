@@ -1,13 +1,12 @@
 import { Octokit } from 'octokit';
 import { verifyReviewToken, htmlResponse } from './utils.js';
 
-export default async function handler(req) {
-  const url = new URL(req.url, `https://${req.headers.get('host')}`);
-  const token = url.searchParams.get('token');
+export default async function handler(req, res) {
+  const token = req.query.token;
   const parsed = verifyReviewToken(token);
 
   if (!parsed) {
-    return htmlResponse('Invalid Link', 'This review link is invalid or has expired.', false);
+    return res.status(400).send(htmlResponse('Invalid Link', 'This review link is invalid or has expired.', false));
   }
 
   const [owner, repo] = parsed.repo.split('/');
@@ -19,19 +18,16 @@ export default async function handler(req) {
     });
 
     if (pr.state !== 'open') {
-      return htmlResponse('Already Handled', `This post has already been ${pr.merged ? 'published' : 'removed'}. No action needed.`);
+      return res.send(htmlResponse('Already Handled', `This post has already been ${pr.merged ? 'published' : 'removed'}. No action needed.`));
     }
 
-    // Close the PR
     await octokit.rest.pulls.update({
       owner, repo, pull_number: parsed.pr,
       state: 'closed',
     });
 
-    return htmlResponse('Post Removed', 'The blog post has been rejected and will not be published. You can close this tab.');
+    return res.send(htmlResponse('Post Removed', 'The blog post has been rejected and will not be published. You can close this tab.'));
   } catch (err) {
-    return htmlResponse('Something Went Wrong', `Could not remove the post. Please reach out to David. (${err.message})`, false);
+    return res.status(500).send(htmlResponse('Something Went Wrong', `Could not remove the post. Please reach out to David. (${err.message})`, false));
   }
 }
-
-export const config = { runtime: 'edge' };

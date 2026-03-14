@@ -4,3 +4,4 @@ history.json
 .loom/state.json
 .loom/worktrees/
 .loom/*.log
+.vercel

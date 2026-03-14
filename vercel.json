@@ -1,10 +1,6 @@
 {
   "buildCommand": "",
+  "installCommand": "npm install",
   "outputDirectory": "",
-  "framework": null,
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "@vercel/node@latest"
-    }
-  }
+  "framework": null
 }

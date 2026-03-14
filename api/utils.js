@@ -30,7 +30,7 @@ export function verifyReviewToken(token) {
 
 export function htmlResponse(title, message, success = true) {
   const color = success ? '#16a34a' : '#dc2626';
-  return new Response(`<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title}</title>
 <style>
@@ -39,8 +39,5 @@ export function htmlResponse(title, message, success = true) {
   h1 { font-size: 24px; color: ${color}; margin-bottom: 12px; }
   p { color: #555; line-height: 1.6; }
 </style></head>
-<body><div class="card"><h1>${title}</h1><p>${message}</p></div></body></html>`, {
-    status: 200,
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
-  });
+<body><div class="card"><h1>${title}</h1><p>${message}</p></div></body></html>`;
 }
