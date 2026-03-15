@@ -9,142 +9,105 @@
       font-size: 15px;
       line-height: 1.6;
       color: #333;
-      max-width: 600px;
+      max-width: 580px;
       margin: 0 auto;
       padding: 20px;
       background: #f4f4f4;
     }
     .container {
       background: #ffffff;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid #e5e5e5;
-    }
-    .content {
-      padding: 32px 28px 24px;
+      border-radius: 6px;
+      padding: 32px 28px;
+      border: 1px solid #e8e8e8;
     }
     .greeting {
-      margin-bottom: 16px;
-      color: #333;
+      margin-bottom: 14px;
     }
     .summary {
       color: #555;
       margin-bottom: 4px;
     }
     .post-title {
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 18px;
+      font-weight: 600;
       color: #24485F;
-      margin: 8px 0 16px;
+      margin: 6px 0 14px;
     }
     .preview-box {
-      background: #f8f8f8;
+      background: #fafafa;
       border-left: 3px solid #CB9E57;
-      padding: 14px 16px;
-      margin: 16px 0;
+      padding: 12px 14px;
+      margin: 14px 0;
       font-size: 14px;
       color: #555;
-      border-radius: 0 4px 4px 0;
       line-height: 1.7;
     }
     .preview-link {
-      display: inline-block;
-      margin: 8px 0 20px;
       font-size: 14px;
       color: #24485F;
       font-weight: 500;
     }
-    .auto-publish {
-      background: #FFFBF0;
-      border-left: 3px solid #CB9E57;
-      border-radius: 0 4px 4px 0;
-      padding: 12px 16px;
-      margin: 0 0 24px;
+    .auto-note {
+      margin: 18px 0;
       font-size: 13px;
-      color: #7A6320;
-      line-height: 1.5;
-    }
-    .buttons {
-      margin: 24px 0 8px;
-    }
-    .btn {
-      display: inline-block;
-      padding: 10px 22px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      text-decoration: none;
-      margin-right: 8px;
-      margin-bottom: 8px;
-    }
-    .btn-approve {
-      background: #16a34a;
-      color: #ffffff;
-    }
-    .btn-feedback {
-      background: #24485F;
-      color: #ffffff;
-    }
-    .btn-deny {
-      background: #f4f4f4;
       color: #888;
-      border: 1px solid #ddd;
+      font-style: italic;
     }
-    .signature {
-      padding: 24px 28px;
+    .actions {
+      margin: 20px 0 0;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+      font-size: 14px;
+    }
+    .actions a {
+      text-decoration: none;
+      margin-right: 18px;
+    }
+    .action-approve { color: #16a34a; font-weight: 600; }
+    .action-feedback { color: #24485F; }
+    .action-deny { color: #aaa; }
+    .sig {
+      margin-top: 28px;
+      padding-top: 18px;
       border-top: 1px solid #eee;
     }
-    .sig-logo {
-      margin-bottom: 8px;
-    }
-    .sig-logo img {
-      height: 36px;
+    .sig img {
+      height: 28px;
       width: auto;
+      display: block;
+      margin-bottom: 6px;
     }
     .sig-text {
       font-size: 12px;
-      color: #999;
-      line-height: 1.5;
+      color: #aaa;
     }
     .sig-text a {
-      color: #24485F;
+      color: #888;
       text-decoration: none;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="content">
-      <div class="greeting">{{greeting}}</div>
+    <div class="greeting">{{greeting}}</div>
+    <div class="summary">{{summary}}</div>
+    <div class="post-title">{{title}}</div>
 
-      <div class="summary">{{summary}}</div>
+    <div class="preview-box">{{preview}}</div>
 
-      <div class="post-title">{{title}}</div>
+    <p><a href="{{previewUrl}}" class="preview-link">Read the full post &rarr;</a></p>
 
-      <div class="preview-box">
-        {{preview}}
-      </div>
+    <div class="auto-note">This post will publish automatically in 24 hours unless you take action below.</div>
 
-      <a href="{{previewUrl}}" class="preview-link">Read the full post &rarr;</a>
-
-      <div class="auto-publish">
-        This post will be published automatically in 24 hours. You can approve it now, request changes, or remove it using the buttons below.
-      </div>
-
-      <div class="buttons">
-        <a href="{{approveUrl}}" class="btn btn-approve">Approve</a>
-        <a href="{{feedbackUrl}}" class="btn btn-feedback">Request Changes</a>
-        <a href="{{denyUrl}}" class="btn btn-deny">Remove</a>
-      </div>
+    <div class="actions">
+      <a href="{{approveUrl}}" class="action-approve">Approve</a>
+      <a href="{{feedbackUrl}}" class="action-feedback">Request changes</a>
+      <a href="{{denyUrl}}" class="action-deny">Remove</a>
     </div>
 
-    <div class="signature">
-      <div class="sig-logo">
-        <a href="https://www.websitelab.biz"><img src="https://www.websitelab.biz/images/logo-color.webp" alt="Website Lab" height="36"></a>
-      </div>
-      <div class="sig-text">
-        <a href="https://www.websitelab.biz">websitelab.biz</a> &middot; (586) 209-4725
-      </div>
+    <div class="sig">
+      <img src="https://www.websitelab.biz/images/logo-color.png" alt="Website Lab" height="28">
+      <div class="sig-text"><a href="https://www.websitelab.biz">websitelab.biz</a> &middot; (586) 209-4725</div>
     </div>
   </div>
 </body>
