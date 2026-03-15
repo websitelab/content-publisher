@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 </div></body></html>`);
   }
 
-  // POST = submit feedback as PR comment
+  // POST = submit feedback as PR comment + trigger regeneration
   try {
     const feedback = req.body?.feedback;
 
@@ -43,11 +43,30 @@ export default async function handler(req, res) {
     const [owner, repo] = parsed.repo.split('/');
     const octokit = new Octokit({ auth: process.env.GITHUB_PAT });
 
+    // Post feedback as PR comment
     await octokit.rest.issues.createComment({
       owner, repo,
       issue_number: parsed.pr,
       body: `**Reviewer feedback:**\n\n${feedback.trim()}`,
     });
+
+    // Trigger regeneration workflow on blog-publisher repo
+    try {
+      await octokit.rest.actions.createWorkflowDispatch({
+        owner: 'websitelab',
+        repo: 'blog-publisher',
+        workflow_id: 'regenerate.yml',
+        ref: 'main',
+        inputs: {
+          pr_repo: parsed.repo,
+          pr_number: String(parsed.pr),
+          feedback: feedback.trim(),
+        },
+      });
+    } catch (err) {
+      // Don't fail the response if workflow trigger fails — feedback was still posted
+      console.error('Failed to trigger regeneration workflow:', err.message);
+    }
 
     return res.send(htmlResponse('Feedback Sent!', "Your feedback has been received. We'll revise the post and send you an updated version. You can close this tab."));
   } catch (err) {

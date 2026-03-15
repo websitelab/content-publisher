@@ -1,0 +1,37 @@
+name: Regenerate Blog Post from Feedback
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_repo:
+        description: 'Target repo (owner/repo)'
+        required: true
+      pr_number:
+        description: 'PR number'
+        required: true
+      feedback:
+        description: 'Reviewer feedback text'
+        required: true
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Regenerate post from feedback
+        run: node scripts/regenerate.js
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_PAT: ${{ secrets.ORG_GITHUB_PAT }}
+          PR_REPO: ${{ inputs.pr_repo }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          FEEDBACK: ${{ inputs.feedback }}
