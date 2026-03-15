@@ -460,11 +460,11 @@ The email contains:
 
 ```yaml
 # .github/workflows/publish.yml
-name: Monthly Blog Publisher
+name: Weekly Blog Publisher
 
 on:
   schedule:
-    - cron: '0 8 1 * *'   # 1st of each month, 8am UTC
+    - cron: '0 14 * * 2'   # Every Tuesday at 10am EDT (2pm UTC)
   workflow_dispatch:         # manual trigger for testing
 
 jobs:
@@ -488,16 +488,19 @@ jobs:
 
 ---
 
-## Secrets Required (org-level)
+## Secrets Required
 
-| Secret            | Purpose                                       |
-|-------------------|-----------------------------------------------|
-| `GEMINI_API_KEY`  | Gemini 2.5 Flash API key                      |
-| `ORG_GITHUB_PAT`  | Fine-grained PAT with Contents:write + PRs on org |
-| `PEXELS_API_KEY`  | Pexels image API key (free tier)              |
-| `RESEND_API_KEY`  | Resend email API key                          |
+Set on the blog-publisher repo: `gh secret set <NAME> --repo websitelab/blog-publisher`
 
-Set once at org level: `gh secret set <NAME> --org websitelab --visibility all`
+| Secret            | Purpose                                        |
+|-------------------|------------------------------------------------|
+| `GEMINI_API_KEY`  | Gemini 2.5 Flash API key                       |
+| `ORG_GITHUB_PAT`  | PAT with Contents:write + PRs on target repos  |
+| `PEXELS_API_KEY`  | Pexels image API key (free tier)               |
+| `RESEND_API_KEY`  | Resend email API key                           |
+| `REVIEW_SECRET`   | HMAC secret for review action tokens           |
+
+Vercel env vars (blog-publisher project): `GITHUB_PAT`, `REVIEW_SECRET`
 
 The PAT needs these permissions on the target repos:
 - `Contents: Read and Write` (to create branches and commits)
@@ -512,16 +515,26 @@ The PAT needs these permissions on the target repos:
 blog-publisher/
 ├── .github/
 │   └── workflows/
-│       └── publish.yml          # Scheduled GitHub Action
+│       ├── publish.yml          # Weekly blog publisher (Tues 10am EDT)
+│       ├── regenerate.yml       # Revise post from reviewer feedback
+│       └── auto-publish.yml     # Auto-merge PRs after 24 hours
+├── api/
+│   ├── approve.js               # Vercel serverless — merge PR
+│   ├── deny.js                  # Vercel serverless — close PR
+│   ├── feedback.js              # Vercel serverless — feedback form + trigger regen
+│   └── utils.js                 # HMAC token verification, branded HTML responses
 ├── scripts/
 │   ├── publish.js               # Main orchestrator
 │   ├── generate.js              # Gemini content generation
+│   ├── regenerate.js            # Revise existing post from feedback
+│   ├── auto-publish.js          # Merge stale PRs (24hr+)
 │   ├── images.js                # Pexels fetch + Sharp processing
-│   ├── github.js                # Octokit: PR creation, dedup queries
-│   ├── email.js                 # Resend review email
+│   ├── github.js                # Octokit: PR creation, dedup, preview URL
+│   ├── email.js                 # Resend review email (branded, with tokens)
 │   └── utils.js                 # Slugify, validation, logging
 ├── templates/
-│   └── review-email.html        # Email template (inline HTML)
+│   └── review-email.html        # Email template — Website Lab branded
+├── vercel.json                  # Vercel config for review API
 ├── sites.json                   # Site config
 ├── package.json
 ├── .gitignore
@@ -537,7 +550,10 @@ blog-publisher/
 - **JSON response mode** — guarantees valid JSON from Gemini, no fragile regex parsing
 - **Pexels over AI-generated images** — real photos, free, no attribution required for API usage
 - **PRs over direct commits** — enables human review, Vercel preview deployments, audit trail
-- **Resend for review emails** — already in the Website Lab stack, simple API, good deliverability
+- **Review API on Vercel** — clients approve/deny/feedback via HMAC-signed URLs, no GitHub account needed
+- **Auto-publish after 24hr** — PRs merge automatically if no action taken, checked hourly
+- **Feedback triggers regeneration** — Gemini revises post based on feedback, targeted edits only (90%+ fidelity)
+- **Resend for review emails** — Website Lab branded, from "David Peyton", auto-publish notice
 - **Query repos for dedup** — authoritative source of truth, no stale local files
 - **Git Trees API** — single atomic commit with both markdown + image (not two separate commits)
 - **Astro schema alignment** — frontmatter must pass Zod validation or the target build breaks
@@ -573,11 +589,12 @@ In dry run mode:
 
 ---
 
-## Future Enhancements (not for v1)
+## Future Enhancements
 
-- Weekly frequency option per site
-- Topic calendar (pre-planned topics per month)
-- SEO keyword targeting from Google Search Console data
-- Regenerate post from PR feedback (reviewer comments → Gemini revision → force-push to PR branch)
-- A/B test different tones per site
-- Dashboard showing all pending/published posts across sites
+Tracked in Epic #5 on GitHub.
+
+- Weekly frequency option per site (#9)
+- Topic calendar — pre-planned topics per month (#10)
+- SEO keyword targeting from Google Search Console (#11)
+- A/B test different tones per site (#13)
+- Publishing dashboard (#14)
