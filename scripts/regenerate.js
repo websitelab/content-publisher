@@ -72,7 +72,7 @@ function parseFrontmatter(markdown) {
 async function revisePost(originalPost, feedback, site) {
   const cleanFeedback = stripReviewerPrefix(feedback);
 
-  const prompt = `You are revising an existing blog post based on reviewer feedback.
+  const prompt = `You are making TARGETED EDITS to an existing blog post based on reviewer feedback. You are NOT rewriting the post. You are making the minimum changes needed to address the feedback.
 
 ORIGINAL POST (markdown):
 ${originalPost}
@@ -80,21 +80,25 @@ ${originalPost}
 REVIEWER FEEDBACK:
 ${cleanFeedback}
 
-Revise the post to address the feedback. Keep the same topic and general structure unless the feedback asks for a change. Maintain all internal links from the original.
-
-CRITICAL WRITING RULES:
+RULES FOR REVISION:
+- Make ONLY the changes the feedback asks for. Do not rewrite sections that aren't mentioned.
+- DO NOT change the title unless the feedback explicitly asks to change it.
+- DO NOT change the tags unless the feedback explicitly asks to change them.
+- DO NOT change the description unless the feedback explicitly asks to change it.
+- Preserve ALL internal links exactly as they appear in the original.
+- Preserve the overall structure, headings and flow of the original.
+- The revised body should be 90%+ identical to the original. Only change what the feedback requires.
 - NEVER use em dashes. Use commas, periods or semicolons instead.
-- NEVER use the Oxford comma. In a list of three or more items, do NOT put a comma before "and" or "or".
-- NEVER use AI-style language: "game-changer", "in today's fast-paced world", "it's important to note", "dive into", "navigating the landscape", "harness the power", "at the end of the day", "leverage", "elevate", "seamlessly", "robust", "cutting-edge", "streamline", "revolutionize", "comprehensive", "delve"
-- Write in short, punchy sentences. Avoid compound sentences strung together with dashes.
+- NEVER use the Oxford comma.
+- NEVER use AI-style language: "game-changer", "dive into", "leverage", "elevate", "seamlessly", "robust", "cutting-edge", "streamline", "revolutionize", "comprehensive", "delve"
 
-Return as JSON:
+Return as JSON. For any field you did NOT change, return the EXACT original value:
 {
-  "title": "string",
-  "description": "string (under 160 chars)",
-  "tags": ["string"],
-  "body": "string (markdown formatted, with internal links preserved)",
-  "imageAlt": "string (descriptive alt text for hero image)"
+  "title": "string (keep original unless feedback says to change it)",
+  "description": "string under 160 chars (keep original unless feedback says to change it)",
+  "tags": ["keep original unless feedback says to change them"],
+  "body": "string (markdown — make ONLY the targeted edits the feedback asks for)",
+  "imageAlt": "string (keep original unless feedback says to change it)"
 }`;
 
   const result = await model.generateContent(prompt);
