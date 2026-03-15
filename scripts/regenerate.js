@@ -253,7 +253,7 @@ async function main() {
     tags: revised.tags,
   };
 
-  await sendReviewEmail(site, postData, prUrl, previewUrl, slug);
+  await sendReviewEmail(site, postData, prUrl, previewUrl, slug, { isRevision: true });
   console.log('Done — revision committed, PR commented, review email sent');
 }
 

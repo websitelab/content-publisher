@@ -75,9 +75,11 @@ function createReviewToken(repo, prNumber) {
   return `${data}.${sig}`;
 }
 
-function buildEmailHtml({ title, body, previewUrl, approveUrl, denyUrl, feedbackUrl, siteName }) {
+function buildEmailHtml({ title, body, previewUrl, approveUrl, denyUrl, feedbackUrl, siteName, isRevision }) {
   const greeting = pick(GREETINGS);
-  const summary = pick(SUMMARIES)(siteName, title);
+  const summary = isRevision
+    ? `Revised the blog post for ${siteName} based on your feedback:`
+    : pick(SUMMARIES)(siteName, title);
   const plainPreview = stripMarkdown(body);
   const preview = truncateToWords(plainPreview, 80);
 
@@ -95,8 +97,10 @@ function buildEmailHtml({ title, body, previewUrl, approveUrl, denyUrl, feedback
 
 /**
  * Send a review email for a generated blog post.
+ * @param {object} options
+ * @param {boolean} options.isRevision - If true, use revision subject/summary format
  */
-export async function sendReviewEmail(site, post, prUrl, previewUrl, slug) {
+export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isRevision = false } = {}) {
   if (!process.env.RESEND_API_KEY) {
     log(site, 'RESEND_API_KEY not set, skipping review email');
     return null;
@@ -105,8 +109,13 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const siteName = new URL(site.siteUrl).hostname;
 
-  const subjectFn = pick(SUBJECT_TEMPLATES);
-  const subject = subjectFn(siteName, post.title);
+  let subject;
+  if (isRevision) {
+    subject = `Revision: "${post.title}"`;
+  } else {
+    const subjectFn = pick(SUBJECT_TEMPLATES);
+    subject = subjectFn(siteName, post.title);
+  }
 
   // Build the direct blog post preview link
   let blogPreviewUrl = prUrl;
@@ -138,6 +147,7 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug) {
     denyUrl,
     feedbackUrl,
     siteName,
+    isRevision,
   });
 
   try {
