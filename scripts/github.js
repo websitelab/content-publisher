@@ -71,19 +71,7 @@ export async function getVercelPreviewUrl(repo, commitSha, maxAttempts = 10) {
 
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const { data: statuses } = await octokit.rest.repos.listCommitStatusesForRef({
-        owner,
-        repo: repoName,
-        ref: commitSha,
-      });
-
-      const vercelStatus = statuses.find(s =>
-        s.target_url?.includes('vercel') && s.state === 'success'
-      );
-
-      if (vercelStatus) return vercelStatus.target_url;
-
-      // Also check deployments
+      // Use deployments API — environment_url gives the actual preview domain
       const { data: deployments } = await octokit.rest.repos.listDeployments({
         owner,
         repo: repoName,

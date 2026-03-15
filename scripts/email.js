@@ -16,7 +16,7 @@ const REVIEW_API_BASE = process.env.REVIEW_API_URL || 'https://blog-publisher-we
 
 const SUBJECT_TEMPLATES = [
   (s, t) => `New post for ${s}: "${t}"`,
-  (s, t) => `Blog draft ready: ${t}`,
+  (s, t) => `Blog post ready for review: ${t}`,
   (s, t) => `Take a look: new ${s} blog post`,
   (s, t) => `Fresh content for ${s}`,
   (s, t) => `${s} blog post needs your eyes`,
@@ -35,10 +35,10 @@ const GREETINGS = [
 
 const SUMMARIES = [
   (s, t) => `New blog post ready for ${s}:`,
-  (s, t) => `Just generated a new post for ${s}:`,
+  (s, t) => `Wrote a new post for ${s}:`,
   (s, t) => `Got a fresh blog post for ${s}. Take a look:`,
   (s, t) => `Here's a new post for ${s}:`,
-  (s, t) => `Blog post just came through for ${s}:`,
+  (s, t) => `New blog post for ${s}:`,
 ];
 
 function pick(arr) {
