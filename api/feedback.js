@@ -12,24 +12,33 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     return res.send(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Leave Feedback</title>
+<title>Request Changes — Website Lab</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f9f9f9; }
-  .card { background: #fff; border-radius: 12px; padding: 40px; max-width: 520px; width: 100%; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; background: #24485F; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .logo { margin-bottom: 32px; }
+  .logo img { height: 44px; }
+  .card { background: #fff; border-radius: 12px; padding: 40px; max-width: 520px; width: 90%; box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
   h1 { font-size: 22px; color: #111; margin-bottom: 8px; }
   p { color: #555; font-size: 14px; margin-bottom: 20px; }
-  textarea { width: 100%; min-height: 120px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 15px; resize: vertical; box-sizing: border-box; }
-  button { margin-top: 16px; padding: 12px 24px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
-  button:hover { background: #1d4ed8; }
+  textarea { width: 100%; min-height: 120px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 15px; resize: vertical; }
+  button { margin-top: 16px; padding: 12px 24px; background: #CB9E57; color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; font-weight: 600; }
+  button:hover { background: #b8893e; }
+  .footer { margin-top: 32px; font-size: 12px; color: rgba(255,255,255,0.5); }
+  .footer a { color: #CB9E57; text-decoration: none; }
 </style></head>
-<body><div class="card">
-  <h1>Leave Feedback</h1>
-  <p>What changes would you like to see? We'll revise the post based on your notes.</p>
-  <form method="POST" action="/api/feedback?token=${encodeURIComponent(token)}">
-    <textarea name="feedback" placeholder="e.g. Change the title, add more detail about pricing, make the tone more casual..." required></textarea>
-    <button type="submit">Send Feedback</button>
-  </form>
-</div></body></html>`);
+<body>
+  <div class="logo"><img src="https://www.websitelab.biz/images/logo-white.webp" alt="Website Lab" height="44"></div>
+  <div class="card">
+    <h1>Request Changes</h1>
+    <p>What changes would you like to see? We'll revise the post and send you an updated version.</p>
+    <form method="POST" action="/api/feedback?token=${encodeURIComponent(token)}">
+      <textarea name="feedback" placeholder="e.g. Change the title, add more detail about pricing, make the tone more casual..." required></textarea>
+      <button type="submit">Send Feedback</button>
+    </form>
+  </div>
+  <div class="footer">A service by <a href="https://www.websitelab.biz">Website Lab</a></div>
+</body></html>`);
   }
 
   // POST = submit feedback as PR comment + trigger regeneration

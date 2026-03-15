@@ -16,8 +16,20 @@
     }
     .container {
       background: #fff;
-      border-radius: 8px;
-      padding: 28px 24px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .header {
+      background: #24485F;
+      padding: 24px 28px;
+      text-align: center;
+    }
+    .header img {
+      height: 40px;
+      width: auto;
+    }
+    .body {
+      padding: 28px 28px 20px;
     }
     .greeting {
       margin-bottom: 16px;
@@ -34,12 +46,21 @@
     }
     .preview-box {
       background: #f5f5f5;
-      border-left: 3px solid #ddd;
+      border-left: 3px solid #CB9E57;
       padding: 14px 16px;
       margin: 16px 0;
       font-size: 14px;
       color: #444;
       border-radius: 0 4px 4px 0;
+    }
+    .auto-publish {
+      background: #FFF8EC;
+      border: 1px solid #CB9E57;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 13px;
+      color: #8B6914;
     }
     .actions {
       margin-top: 24px;
@@ -64,34 +85,50 @@
       text-decoration: none;
     }
     .footer {
-      margin-top: 24px;
-      font-size: 12px;
-      color: #999;
+      background: #24485F;
+      padding: 16px 28px;
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+    }
+    .footer a {
+      color: #CB9E57;
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="greeting">{{greeting}}</div>
-
-    <div class="summary">{{summary}}</div>
-
-    <div class="post-title">"{{title}}"</div>
-
-    <div class="preview-box">
-      {{preview}}
+    <div class="header">
+      <img src="https://www.websitelab.biz/images/logo-white.webp" alt="Website Lab" height="40">
     </div>
 
-    <a href="{{previewUrl}}" class="preview-link">See the full post on the preview site</a>
+    <div class="body">
+      <div class="greeting">{{greeting}}</div>
 
-    <div class="actions">
-      <a href="{{approveUrl}}" class="action-approve">Approve and publish</a>
-      <a href="{{feedbackUrl}}" class="action-feedback">Leave a note</a>
-      <a href="{{denyUrl}}" class="action-deny">Kill it</a>
+      <div class="summary">{{summary}}</div>
+
+      <div class="post-title">"{{title}}"</div>
+
+      <div class="preview-box">
+        {{preview}}
+      </div>
+
+      <a href="{{previewUrl}}" class="preview-link">See the full post on the preview site &rarr;</a>
+
+      <div class="auto-publish">
+        This post will be published automatically in 24 hours. Use the links below to approve it now, request changes, or remove it.
+      </div>
+
+      <div class="actions">
+        <a href="{{approveUrl}}" class="action-approve">Approve now</a>
+        <a href="{{feedbackUrl}}" class="action-feedback">Request changes</a>
+        <a href="{{denyUrl}}" class="action-deny">Remove</a>
+      </div>
     </div>
 
     <div class="footer">
-      - David
+      A service by <a href="https://www.websitelab.biz">Website Lab</a> &middot; - David
     </div>
   </div>
 </body>
