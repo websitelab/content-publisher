@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 
-const REVIEW_SECRET = process.env.REVIEW_SECRET;
+const REVIEW_SECRET = process.env.REVIEW_SECRET?.trim();
 
 export function createReviewToken(repo, prNumber) {
   const payload = `${repo}:${prNumber}`;
