@@ -12,6 +12,9 @@ import { Octokit } from 'octokit';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sendReviewEmail } from './email.js';
+import { getVercelPreviewUrl } from './github.js';
+import { sleep } from './utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -228,7 +231,26 @@ async function main() {
     body: `**Revised post committed** based on feedback. The preview will update shortly.\n\nChanges made:\n- Title: "${revised.title}"\n- Description: "${revised.description}"`,
   });
 
-  console.log('Done — revision committed and PR commented');
+  // Wait for Vercel to rebuild preview, then send fresh review email
+  console.log('Waiting for Vercel preview to rebuild...');
+  await sleep(10000); // Give Vercel a head start
+  const previewUrl = await getVercelPreviewUrl(`${owner}/${repo}`, newSha);
+  if (previewUrl) {
+    console.log(`Vercel preview: ${previewUrl}`);
+  } else {
+    console.log('Vercel preview not ready, using PR URL as fallback');
+  }
+
+  const prUrl = `https://github.com/${owner}/${repo}/pull/${PR_NUMBER}`;
+  const postData = {
+    title: revised.title,
+    description: revised.description,
+    body: revised.body,
+    tags: revised.tags,
+  };
+
+  await sendReviewEmail(site, postData, prUrl, previewUrl, slug);
+  console.log('Done — revision committed, PR commented, review email sent');
 }
 
 main().catch(err => {

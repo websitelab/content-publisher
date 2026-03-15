@@ -32,6 +32,9 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_PAT: ${{ secrets.ORG_GITHUB_PAT }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REVIEW_SECRET: ${{ secrets.REVIEW_SECRET }}
+          REVIEW_API_URL: https://blog-publisher-iota.vercel.app
           PR_REPO: ${{ inputs.pr_repo }}
           PR_NUMBER: ${{ inputs.pr_number }}
           FEEDBACK: ${{ inputs.feedback }}
