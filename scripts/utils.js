@@ -27,7 +27,7 @@ export function todayISO() {
  * Build frontmatter string from post data and site config.
  */
 export function buildMarkdown(post, site, slug) {
-  const imageUrlPrefix = site.imagePath.replace(/^public/, '');
+  const imageUrlPrefix = '/' + site.imagePath.split('public/').pop();
   const frontmatter = [
     '---',
     `title: "${post.title.replace(/"/g, '\\"')}"`,
