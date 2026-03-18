@@ -27,6 +27,7 @@ export function todayISO() {
  * Build frontmatter string from post data and site config.
  */
 export function buildMarkdown(post, site, slug) {
+  const imageUrlPrefix = site.imagePath.replace(/^public/, '');
   const frontmatter = [
     '---',
     `title: "${post.title.replace(/"/g, '\\"')}"`,
@@ -34,7 +35,7 @@ export function buildMarkdown(post, site, slug) {
     `pubDate: ${todayISO()}`,
     `author: "${site.author}"`,
     'image:',
-    `  url: "/images/blog/${slug}.webp"`,
+    `  url: "${imageUrlPrefix}/${slug}.webp"`,
     `  alt: "${post.imageAlt.replace(/"/g, '\\"')}"`,
     `tags: [${post.tags.map(t => `"${t}"`).join(', ')}]`,
     'draft: false',

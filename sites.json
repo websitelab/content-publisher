@@ -14,5 +14,37 @@
       { "path": "/google-business-profile", "label": "Google Business Profile setup" },
       { "path": "/contact", "label": "get in touch" }
     ]
+  },
+  {
+    "repo": "websitelab/mispineandjoint.com",
+    "contentPath": "src/content/articles",
+    "imagePath": "public/images/articles",
+    "industry": "multi-specialty healthcare: chiropractic, physical therapy, massage therapy",
+    "tone": "professional, caring, knowledgeable but approachable",
+    "audience": "patients in New Baltimore MI seeking non-surgical pain relief and wellness care",
+    "siteUrl": "https://mispineandjoint.com",
+    "author": "MI Spine and Joint",
+    "reviewEmail": "business@mispineandjoint.com",
+    "internalLinks": [
+      { "path": "/chiropractic", "label": "our chiropractic care" },
+      { "path": "/physical-therapy", "label": "physical therapy services" },
+      { "path": "/massage-therapy", "label": "massage therapy" }
+    ]
+  },
+  {
+    "repo": "websitelab/spineandsportsmi",
+    "contentPath": "website/src/content/articles",
+    "imagePath": "website/public/images/articles",
+    "industry": "multi-specialty healthcare: chiropractic, physical therapy",
+    "tone": "professional, caring, knowledgeable but approachable",
+    "audience": "patients in Warren and Oak Park MI seeking non-surgical pain relief and wellness care",
+    "siteUrl": "https://spineandsportsmi.com",
+    "author": "Comprehensive Spine & Sports Center",
+    "reviewEmail": "business@mispineandjoint.com",
+    "internalLinks": [
+      { "path": "/chiropractic", "label": "our chiropractic care" },
+      { "path": "/about", "label": "about our practice" },
+      { "path": "/contact", "label": "contact us" }
+    ]
   }
 ]
