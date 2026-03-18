@@ -24,7 +24,8 @@
     "audience": "patients in New Baltimore MI seeking non-surgical pain relief and wellness care",
     "siteUrl": "https://mispineandjoint.com",
     "author": "MI Spine and Joint",
-    "reviewEmail": "business@mispineandjoint.com",
+    "reviewEmail": "drdeboadegbenro@gmail.com",
+    "ccEmail": "business@mispineandjoint.com",
     "internalLinks": [
       { "path": "/chiropractic", "label": "our chiropractic care" },
       { "path": "/physical-therapy", "label": "physical therapy services" },
@@ -40,7 +41,8 @@
     "audience": "patients in Warren and Oak Park MI seeking non-surgical pain relief and wellness care",
     "siteUrl": "https://spineandsportsmi.com",
     "author": "Comprehensive Spine & Sports Center",
-    "reviewEmail": "business@mispineandjoint.com",
+    "reviewEmail": "drdeboadegbenro@gmail.com",
+    "ccEmail": "business@mispineandjoint.com",
     "internalLinks": [
       { "path": "/chiropractic", "label": "our chiropractic care" },
       { "path": "/about", "label": "about our practice" },

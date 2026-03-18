@@ -153,14 +153,21 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isR
   });
 
   try {
-    const result = await resend.emails.send({
+    const emailPayload = {
       from: 'David Peyton <david@send.websitelab.biz>',
       to: site.reviewEmail,
       subject,
       html,
-    });
+    };
 
-    log(site, `Review email sent to ${site.reviewEmail}`);
+    // Support CC field from site config
+    if (site.ccEmail) {
+      emailPayload.cc = Array.isArray(site.ccEmail) ? site.ccEmail : [site.ccEmail];
+    }
+
+    const result = await resend.emails.send(emailPayload);
+
+    log(site, `Review email sent to ${site.reviewEmail}${site.ccEmail ? ` (cc: ${site.ccEmail})` : ''}`);
     return result;
   } catch (err) {
     log(site, `Failed to send review email: ${err.message}`);
