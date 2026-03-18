@@ -2,16 +2,33 @@ import sharp from 'sharp';
 import { log } from './utils.js';
 
 const PEXELS_BASE = 'https://api.pexels.com/v1/search';
-const FALLBACK_QUERY = 'business office';
 const TARGET_WIDTH = 1280;
 const WEBP_QUALITY = 80;
 
-async function searchPexels(query) {
+// Industry-specific fallbacks (much better than "business office")
+const INDUSTRY_FALLBACKS = {
+  default: 'healthcare professional clinic',
+  chiropractic: 'chiropractic spine adjustment treatment',
+  'physical therapy': 'physical therapy rehabilitation exercise',
+  'massage therapy': 'therapeutic massage treatment',
+  healthcare: 'medical clinic patient care',
+  'sports medicine': 'sports medicine rehabilitation athlete',
+};
+
+function getFallbackQuery(industry) {
+  const lower = (industry || '').toLowerCase();
+  for (const [key, query] of Object.entries(INDUSTRY_FALLBACKS)) {
+    if (lower.includes(key)) return query;
+  }
+  return INDUSTRY_FALLBACKS.default;
+}
+
+async function searchPexels(query, perPage = 10) {
   const url = new URL(PEXELS_BASE);
   url.searchParams.set('query', query);
   url.searchParams.set('orientation', 'landscape');
   url.searchParams.set('size', 'large');
-  url.searchParams.set('per_page', '1');
+  url.searchParams.set('per_page', String(perPage));
 
   const res = await fetch(url, {
     headers: { Authorization: process.env.PEXELS_API_KEY },
@@ -19,18 +36,43 @@ async function searchPexels(query) {
 
   if (!res.ok) {
     log('images', `Pexels API error ${res.status} for "${query}"`);
-    return null;
+    return [];
   }
 
   const data = await res.json();
-  const photo = data.photos?.[0];
+  return data.photos || [];
+}
 
-  if (!photo) {
-    log('images', `No Pexels results for "${query}"`);
-    return null;
+/**
+ * Score photos to prefer clinical/treatment imagery over lifestyle portraits.
+ * Higher score = better match.
+ */
+function scorePhoto(photo) {
+  let score = 0;
+  const alt = (photo.alt || '').toLowerCase();
+
+  // Prefer images with medical/clinical keywords in the alt text
+  const clinicalTerms = ['therapy', 'treatment', 'medical', 'clinic', 'spine', 'exercise',
+    'rehabilitation', 'stretch', 'doctor', 'patient', 'anatomy', 'health',
+    'wellness', 'massage', 'adjustment', 'recovery', 'fitness', 'training'];
+  for (const term of clinicalTerms) {
+    if (alt.includes(term)) score += 2;
   }
 
-  return photo.src.large2x;
+  // Prefer wider aspect ratios (more editorial/hero-friendly)
+  const ratio = photo.width / photo.height;
+  if (ratio >= 1.4 && ratio <= 2.0) score += 3;
+
+  // Prefer larger source images
+  if (photo.width >= 2000) score += 1;
+
+  // Slight penalty for very generic photos
+  const genericTerms = ['portrait', 'selfie', 'headshot', 'couple', 'dating'];
+  for (const term of genericTerms) {
+    if (alt.includes(term)) score -= 3;
+  }
+
+  return score;
 }
 
 async function downloadAndProcess(imageUrl) {
@@ -54,19 +96,29 @@ async function downloadAndProcess(imageUrl) {
   return { buffer, width, height, size: buffer.length };
 }
 
-export async function fetchHeroImage(searchQuery) {
+export async function fetchHeroImage(searchQuery, industry) {
+  // Build a cascade of search queries from specific to general
+  const fallbackQuery = getFallbackQuery(industry);
   const queries = [
     searchQuery,
-    searchQuery.split(/\s+/).slice(0, 2).join(' '),
-    FALLBACK_QUERY,
+    searchQuery.split(/\s+/).slice(0, 3).join(' '),
+    fallbackQuery,
   ];
 
   for (const query of queries) {
     try {
-      const imageUrl = await searchPexels(query);
-      if (!imageUrl) continue;
+      const photos = await searchPexels(query, 10);
+      if (photos.length === 0) continue;
 
-      log('images', `Found image for "${query}", processing...`);
+      // Score and sort photos, pick the best one
+      const scored = photos
+        .map(p => ({ photo: p, score: scorePhoto(p) }))
+        .sort((a, b) => b.score - a.score);
+
+      const best = scored[0].photo;
+      const imageUrl = best.src.large2x;
+
+      log('images', `Found ${photos.length} images for "${query}", picked best (score: ${scored[0].score})`);
       const result = await downloadAndProcess(imageUrl);
       if (result) return result;
     } catch (err) {

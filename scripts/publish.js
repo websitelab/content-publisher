@@ -5,6 +5,11 @@
  *
  * Reads sites.json, generates blog posts via Gemini, fetches hero images
  * from Pexels, creates PRs on target repos, and sends review emails.
+ *
+ * Flags:
+ *   --dry-run    Generate content but don't create PRs or send emails
+ *   --count N    Generate N posts per site (default: 1)
+ *   --site URL   Only process sites matching this siteUrl
  */
 
 import { readFileSync } from 'node:fs';
@@ -18,7 +23,21 @@ import { slugify, buildMarkdown, log, sleep } from './utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DRY_RUN = process.argv.includes('--dry-run');
+const DELAY_BETWEEN_POSTS = 5000;
 const DELAY_BETWEEN_SITES = 3000;
+
+function parseCount() {
+  const idx = process.argv.indexOf('--count');
+  if (idx === -1 || idx + 1 >= process.argv.length) return 1;
+  const n = parseInt(process.argv[idx + 1], 10);
+  return isNaN(n) || n < 1 ? 1 : n;
+}
+
+function parseSiteFilter() {
+  const idx = process.argv.indexOf('--site');
+  if (idx === -1 || idx + 1 >= process.argv.length) return null;
+  return process.argv[idx + 1];
+}
 
 function loadSites() {
   const sitesPath = join(__dirname, '..', 'sites.json');
@@ -44,45 +63,19 @@ function checkEnvVars() {
   }
 }
 
-async function processSite(site) {
-  log(site, '--- Starting ---');
-
-  // Check for existing open PR
-  if (!DRY_RUN) {
-    try {
-      const hasOpenPR = await checkExistingPR(site.repo);
-      if (hasOpenPR) {
-        log(site, 'Open PR with blog-publisher label already exists, skipping');
-        return { site, status: 'skipped', reason: 'existing PR' };
-      }
-    } catch (err) {
-      log(site, `Error checking existing PRs: ${err.message}`);
-    }
-  }
-
-  // Get existing titles for dedup
-  let existingTitles = [];
-  if (!DRY_RUN) {
-    try {
-      existingTitles = await getExistingTitles(site.repo, site.contentPath);
-      log(site, `Found ${existingTitles.length} existing posts`);
-    } catch (err) {
-      log(site, `Error fetching existing titles: ${err.message}`);
-    }
-  }
-
+async function generateOnePost(site, existingTitles) {
   // Generate content
   const post = await generatePost(site, existingTitles);
   if (!post) {
-    log(site, 'Content generation failed, skipping');
-    return { site, status: 'failed', reason: 'generation failed' };
+    log(site, 'Content generation failed');
+    return null;
   }
 
   const slug = slugify(post.title);
   log(site, `Slug: ${slug}`);
 
-  // Fetch hero image
-  const image = await fetchHeroImage(post.imageSearchQuery);
+  // Fetch hero image (pass industry for better fallback queries)
+  const image = await fetchHeroImage(post.imageSearchQuery, site.industry);
   if (image) {
     log(site, `Image: ${image.width}x${image.height}, ${(image.size / 1024).toFixed(0)}KB`);
   } else {
@@ -104,7 +97,7 @@ async function processSite(site) {
     log(site, `  Tags: ${post.tags.join(', ')}`);
     log(site, `  Word count: ~${post.body.split(/\s+/).length}`);
     log(site, '===============');
-    return { site, status: 'dry-run', post, slug };
+    return { status: 'dry-run', post, slug };
   }
 
   // Create PR
@@ -117,8 +110,8 @@ async function processSite(site) {
   );
 
   if (!pr) {
-    log(site, 'PR creation failed, skipping email');
-    return { site, status: 'failed', reason: 'PR creation failed' };
+    log(site, 'PR creation failed');
+    return { status: 'failed', reason: 'PR creation failed' };
   }
 
   log(site, `PR created: ${pr.html_url}`);
@@ -135,25 +128,92 @@ async function processSite(site) {
   // Send review email
   await sendReviewEmail(site, post, pr.html_url, previewUrl, slug);
 
-  log(site, '--- Complete ---');
-  return { site, status: 'published', pr: pr.html_url, slug };
+  return { status: 'published', pr: pr.html_url, slug, title: post.title };
 }
 
-async function main() {
-  console.log(`Blog Publisher ${DRY_RUN ? '(DRY RUN)' : ''}`);
-  console.log('='.repeat(50));
+async function processSite(site, count) {
+  log(site, `--- Starting (${count} post${count > 1 ? 's' : ''}) ---`);
 
-  checkEnvVars();
-  const sites = loadSites();
-  console.log(`Processing ${sites.length} site(s)\n`);
+  // Get existing titles for dedup
+  let existingTitles = [];
+  if (!DRY_RUN) {
+    try {
+      existingTitles = await getExistingTitles(site.repo, site.contentPath);
+      log(site, `Found ${existingTitles.length} existing posts`);
+    } catch (err) {
+      log(site, `Error fetching existing titles: ${err.message}`);
+    }
+  }
+
+  // For single post mode (weekly schedule), check for existing PR
+  if (count === 1 && !DRY_RUN) {
+    try {
+      const hasOpenPR = await checkExistingPR(site.repo);
+      if (hasOpenPR) {
+        log(site, 'Open PR with blog-publisher label already exists, skipping');
+        return [{ site, status: 'skipped', reason: 'existing PR' }];
+      }
+    } catch (err) {
+      log(site, `Error checking existing PRs: ${err.message}`);
+    }
+  }
 
   const results = [];
 
-  for (let i = 0; i < sites.length; i++) {
-    const result = await processSite(sites[i]);
-    results.push(result);
+  for (let i = 0; i < count; i++) {
+    if (count > 1) log(site, `\n  Post ${i + 1}/${count}:`);
 
-    // Delay between sites to avoid rate limits
+    const result = await generateOnePost(site, existingTitles);
+
+    if (result) {
+      results.push({ site, ...result });
+
+      // Add the new title to dedup list for subsequent posts
+      if (result.title || result.post?.title) {
+        existingTitles.push(result.title || result.post.title);
+      }
+    } else {
+      results.push({ site, status: 'failed', reason: 'generation failed' });
+    }
+
+    // Delay between posts to avoid rate limits
+    if (i < count - 1) {
+      log(site, `Waiting ${DELAY_BETWEEN_POSTS / 1000}s before next post...`);
+      await sleep(DELAY_BETWEEN_POSTS);
+    }
+  }
+
+  log(site, '--- Complete ---');
+  return results;
+}
+
+async function main() {
+  const count = parseCount();
+  const siteFilter = parseSiteFilter();
+
+  console.log(`Blog Publisher ${DRY_RUN ? '(DRY RUN) ' : ''}${count > 1 ? `(${count} posts per site) ` : ''}`);
+  console.log('='.repeat(50));
+
+  checkEnvVars();
+  let sites = loadSites();
+
+  if (siteFilter) {
+    sites = sites.filter(s => s.siteUrl.includes(siteFilter));
+    if (sites.length === 0) {
+      console.error(`No sites match filter: ${siteFilter}`);
+      process.exit(1);
+    }
+  }
+
+  console.log(`Processing ${sites.length} site(s)\n`);
+
+  const allResults = [];
+
+  for (let i = 0; i < sites.length; i++) {
+    const results = await processSite(sites[i], count);
+    allResults.push(...results);
+
+    // Delay between sites
     if (i < sites.length - 1) {
       log('publisher', `Waiting ${DELAY_BETWEEN_SITES / 1000}s before next site...`);
       await sleep(DELAY_BETWEEN_SITES);
@@ -163,7 +223,7 @@ async function main() {
   // Summary
   console.log('\n' + '='.repeat(50));
   console.log('Summary:');
-  for (const r of results) {
+  for (const r of allResults) {
     const name = r.site.siteUrl || r.site.repo;
     if (r.status === 'published') {
       console.log(`  ${name}: PR created -> ${r.pr}`);
@@ -176,7 +236,7 @@ async function main() {
     }
   }
 
-  const failed = results.filter(r => r.status === 'failed');
+  const failed = allResults.filter(r => r.status === 'failed');
   if (failed.length > 0) {
     process.exit(1);
   }
