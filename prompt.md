@@ -3,10 +3,11 @@
 ## What This Is
 
 A standalone automated blog publisher for **Website Lab**.
-Runs as a **GitHub Action** on a monthly schedule, generates SEO-optimized blog posts
-using **Gemini 2.5 Flash**, and submits them as **pull requests** to multiple client
-Astro websites for **human review before publishing**. An email notification is sent
-to a designated reviewer with a preview link and approve/deny/edit options.
+Runs as a **GitHub Action** on a weekly schedule, researches current topics
+using **Gemini 2.5 Flash with Google Search grounding**, writes evidence-based
+articles, and submits them as **pull requests** to multiple client Astro websites
+for **human review before publishing**. An email notification is sent to a
+designated reviewer with a preview link and approve/deny/edit options.
 Vercel auto-deploys each site when the PR is merged.
 
 ---
@@ -15,16 +16,18 @@ Vercel auto-deploys each site when the PR is merged.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  GitHub Action (scheduled monthly)                       │
+│  GitHub Action (scheduled weekly)                         │
 │                                                          │
 │  1. Read sites.json config                               │
-│  2. For each site:                                       │
+│  2. For each site (× --count N posts):                   │
 │     a. Query existing posts via GitHub API (dedup)       │
-│     b. Gemini Flash → research + write post (JSON mode)  │
-│     c. Pexels API → fetch + compress hero image          │
-│     d. Build .md with Astro content collection schema    │
+│     b. Gemini + Google Search → research current topics  │
+│     c. Gemini Flash (JSON mode) → write article          │
+│        - Evidence-based with outbound source links       │
+│        - Internal links + CTAs + References section      │
+│     d. Pexels API → fetch, score, deduplicate hero image │
 │     e. GitHub API → create PR to site's repo             │
-│  3. Send review email via Resend                         │
+│  3. Send review email via Resend (to + cc)               │
 │     → Preview link (Vercel preview deployment)           │
 │     → Approve / Deny / Edit+Feedback options             │
 │  4. Reviewer approves → PR merged → Vercel deploys       │
@@ -38,93 +41,100 @@ Zero cron slots consumed. Free within GitHub Actions minutes.
 
 ## Tech Stack
 
-| Layer              | Tool                                  |
-|--------------------|---------------------------------------|
-| Orchestration      | GitHub Actions (scheduled)            |
-| AI                 | Gemini 2.5 Flash API (JSON mode)      |
-| Images             | Pexels API (free tier)                |
-| Image processing   | Sharp (WebP conversion + compression) |
-| Publishing         | GitHub REST API (Octokit)             |
-| Review emails      | Resend API                            |
-| Target sites       | Astro content collections             |
-| Hosting            | Vercel (auto-deploy on push/merge)    |
+| Layer              | Tool                                       |
+|--------------------|--------------------------------------------|
+| Orchestration      | GitHub Actions (scheduled)                 |
+| Research           | Gemini 2.5 Flash + Google Search grounding |
+| Writing            | Gemini 2.5 Flash API (JSON mode)           |
+| Images             | Pexels API (free tier)                     |
+| Image processing   | Sharp (WebP conversion + compression)      |
+| Publishing         | GitHub REST API (Octokit)                  |
+| Review emails      | Resend API                                 |
+| Target sites       | Astro content collections                  |
+| Hosting            | Vercel (auto-deploy on push/merge)         |
+
+---
+
+## CLI Flags
+
+```bash
+node scripts/publish.js                    # Standard run (1 post per site)
+node scripts/publish.js --dry-run          # Generate but don't create PRs/emails
+node scripts/publish.js --count 6          # Batch: 6 posts per site
+node scripts/publish.js --site example.com # Only process matching sites
+node scripts/publish.js --count 6 --site example.com --dry-run  # Combined
+```
+
+| Flag          | Purpose                                              |
+|---------------|------------------------------------------------------|
+| `--dry-run`   | Generate content but skip PRs and emails             |
+| `--count N`   | Generate N posts per site (default: 1)               |
+| `--site URL`  | Only process sites whose siteUrl contains this string |
+
+In batch mode (`--count > 1`), the existing-PR check is skipped and titles
+accumulate across iterations for dedup.
+
+---
+
+## Two-Phase Content Generation
+
+### Phase 1: Research (Google Search Grounding)
+
+Gemini searches the web for current topics relevant to the site's industry:
+- Recent peer-reviewed studies and meta-analyses
+- New guidelines from professional organizations
+- Trending topics the target audience is searching for
+- Seasonal or timely concerns
+
+Returns a research brief with source URLs extracted from grounding metadata.
+
+### Phase 2: Write (JSON Mode)
+
+A second Gemini call writes the article based on the research brief. The prompt
+enforces:
+
+- **Outbound links (3-5)**: Every cited claim links to its source (journals, .gov, professional orgs)
+- **Internal links (2-3)**: Links to site service/contact pages from `internalLinks` config
+- **CTAs (2)**: Mid-article + closing call to action with booking/contact links
+- **TL;DR**: 2-3 sentence summary near the top for AI snippet extraction
+- **References section**: Numbered source list at the bottom
+- **Business name accuracy**: Uses exact name from config, never abbreviated
+- **SEO/AIO**: Keyword in first 100 words, FAQ-style headings, short paragraphs
+
+### Business Name Discovery
+
+The business name is read from `site.author` (or `site.businessName` if set).
+It is injected into the prompt with strict instructions to use the exact spelling
+every time. This prevents Gemini from inventing abbreviations or variations.
 
 ---
 
 ## Human-in-the-Loop Review Workflow
 
 Every generated post goes through human review before publishing. No content is
-auto-published.
+auto-published (unless 24hr passes with no action).
 
 ### Flow
 
-1. **Generate** — Gemini writes the post, Pexels provides the hero image
-2. **PR** — A pull request is created on the target site's repo containing:
-   - The blog post markdown file (`src/content/blog/{slug}.md`)
-   - The hero image (`public/images/blog/{slug}.webp`)
-   - PR title = blog post title, PR body = meta description + preview info
-3. **Preview** — Vercel automatically generates a preview deployment for the PR
-4. **Email** — A review email is sent via Resend to the designated reviewer:
-   - Rendered preview of the post (title, description, first ~200 words)
-   - Link to the full Vercel preview deployment
-   - Link to approve (merge the PR via GitHub)
-   - Link to deny (close the PR via GitHub)
-   - Link to edit / leave feedback (comment on the PR)
-5. **Action** — Reviewer decides:
+1. **Research** — Gemini searches the web for current topics
+2. **Generate** — Gemini writes the post based on real research
+3. **Image** — Pexels provides the hero image (scored, deduplicated)
+4. **PR** — A pull request is created on the target site's repo
+5. **Preview** — Vercel generates a preview deployment for the PR
+6. **Email** — A review email is sent via Resend to the designated reviewer
+7. **Action** — Reviewer decides:
    - **Approve** → merges PR → Vercel deploys → post is live
    - **Deny** → PR is closed, post is discarded
    - **Edit** → reviewer comments with feedback, post can be regenerated
 
-### Review Email Requirements
+### Review Email
 
-The review email must feel like a message from a person, not a system notification.
-
-**Rules:**
-- Casual, conversational tone. Not corporate. Not robotic.
-- NEVER use em dashes or Oxford commas (same rules as blog posts)
-- Vary the subject line and opening every time. No two emails should read the same.
-- Keep it short. The email is a heads-up, not a report.
-- Use a pool of subject line templates and opening lines, selected randomly.
-
-**Subject line examples** (rotate, never repeat the same pattern):
-- `New post for {siteName}: "{title}"`
-- `Blog draft ready: {title}`
-- `Take a look: new {siteName} blog post`
-- `Fresh content for {siteName}`
-
-**Email body must include:**
-- Post title and a 1-2 sentence summary (not the full description)
-- First ~150 words of the post body as an inline preview
-- Link to the full Vercel preview deployment
-- Link to approve (merge the PR on GitHub)
-- Link to reject (close the PR)
-- Link to leave feedback (comment on the PR)
-
-**Example tone:**
-```
-Hey,
-
-New blog post ready for blastingjack.com:
-
-"When to Use Wet Blasting Instead of Dry"
-
-Quick look at when wet abrasive blasting makes more sense, especially
-on surfaces where dust control matters. Here's how it starts:
-
-[preview text...]
-
-Check the full preview here: [link]
-
-Looks good? Approve it: [link]
-Not quite right? Leave a note: [link]
-Kill it: [link]
-```
-
-### Site Config for Review
-
-Each site in `sites.json` specifies a `reviewEmail` — the person who reviews
-posts for that site. Could be the business owner, a marketing contact, or a
-shared inbox.
+- Casual, conversational tone (not corporate)
+- Varied subject lines and openings (randomized from pool)
+- Inline preview of first ~80 words
+- Links to: full Vercel preview, approve, reject, leave feedback
+- Auto-publish notice: merges after 24hr if no action taken
+- Supports `to` + `cc` routing per site
 
 ---
 
@@ -133,62 +143,46 @@ shared inbox.
 ```json
 [
   {
-    "repo": "websitelab/blastingjack",
-    "contentPath": "src/content/blog",
-    "imagePath": "public/images/blog",
-    "industry": "sandblasting and surface preparation",
-    "tone": "blue collar, straightforward",
-    "audience": "property managers, contractors, industrial facility managers",
-    "siteUrl": "https://blastingjack.com",
-    "author": "Blasting Jack",
-    "reviewEmail": "review@websitelab.dev",
+    "repo": "websitelab/mispineandjoint.com",
+    "contentPath": "src/content/articles",
+    "imagePath": "public/images/articles",
+    "industry": "multi-specialty healthcare: chiropractic, physical therapy, massage therapy",
+    "tone": "professional, caring, knowledgeable but approachable",
+    "audience": "patients in New Baltimore MI seeking non-surgical pain relief",
+    "siteUrl": "https://mispineandjoint.com",
+    "author": "Michigan Spine and Joint Center",
+    "reviewEmail": "drdeboadegbenro@gmail.com",
+    "ccEmail": "business@mispineandjoint.com",
     "internalLinks": [
-      { "path": "/services", "label": "our services" },
-      { "path": "/about", "label": "about us" },
-      { "path": "/contact", "label": "get a free quote" }
-    ]
-  },
-  {
-    "repo": "websitelab/pro-handyman.services",
-    "contentPath": "src/content/blog",
-    "imagePath": "public/images/blog",
-    "industry": "handyman and home repair",
-    "tone": "friendly, helpful, local",
-    "audience": "homeowners in Fairfield County CT",
-    "siteUrl": "https://pro-handyman.services",
-    "author": "Pro Handyman",
-    "reviewEmail": "review@websitelab.dev",
-    "internalLinks": [
-      { "path": "/services", "label": "our services" },
-      { "path": "/about", "label": "about us" },
-      { "path": "/contact", "label": "contact us" }
+      { "path": "/chiropractic", "label": "our chiropractic care" },
+      { "path": "/physical-therapy", "label": "physical therapy services" },
+      { "path": "/massage-therapy", "label": "massage therapy" }
     ]
   }
 ]
 ```
 
-Each entry defines a target site. The publisher loops through all entries on each run.
-
 | Field            | Purpose                                              |
 |------------------|------------------------------------------------------|
 | `repo`           | GitHub org/repo for the target Astro site             |
-| `contentPath`    | Where blog markdown lives in the target repo          |
-| `imagePath`      | Where blog images live in the target repo             |
-| `industry`       | Industry context fed to Gemini prompt                 |
+| `contentPath`    | Where article markdown lives in the target repo       |
+| `imagePath`      | Where article images live in the target repo          |
+| `industry`       | Industry context fed to Gemini research + write       |
 | `tone`           | Writing voice fed to Gemini prompt                    |
 | `audience`       | Target reader fed to Gemini prompt                    |
 | `siteUrl`        | Used for internal linking and SEO context              |
-| `author`         | Author name for frontmatter                           |
-| `reviewEmail`    | Email address that receives review notifications       |
-| `internalLinks`  | Pages on the site to link to from blog posts (SEO)    |
+| `author`         | Business name — used exactly as-is in articles        |
+| `businessName`   | (Optional) Override business name if different from author |
+| `reviewEmail`    | Email address that receives review notifications (to) |
+| `ccEmail`        | (Optional) CC address for review notifications        |
+| `internalLinks`  | Pages on the site to link to from articles (SEO)      |
 
 ---
 
 ## Astro Content Collection Alignment
 
 All target sites use Astro content collections. The generated posts must match
-each site's content collection schema exactly. The standard blog schema across
-Website Lab sites uses Zod validation:
+each site's content collection schema exactly:
 
 ```typescript
 // src/content.config.ts (target site schema — for reference)
@@ -196,8 +190,8 @@ import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
 
-const blog = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/blog' }),
+const articles = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/articles' }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
@@ -213,246 +207,107 @@ const blog = defineCollection({
   }),
 });
 
-export const collections = { blog };
+export const collections = { articles };
 ```
 
-**The publisher must produce frontmatter that passes this schema validation.**
-If a field is missing or the wrong type, the Astro build will fail. This is a
-hard requirement — not optional.
+The image URL in frontmatter is derived from `imagePath` by stripping everything
+up to and including `public/`. So `public/images/articles` → `/images/articles`.
+This handles subdirectory roots like `website/public/images/articles` correctly.
 
 ---
 
 ## Content Quality Standards
 
-These rules apply to ALL generated text: blog posts, email subjects, email bodies.
+These rules apply to ALL generated text.
 
 ### Absolute Prohibitions
 
 - **No em dashes.** Use commas, periods or semicolons instead.
 - **No Oxford commas.** In lists of three or more, no comma before "and" or "or".
-- **No AI-style language.** The output must read like a human wrote it, not a language model. Banned phrases include (but are not limited to): "game-changer", "in today's fast-paced world", "it's important to note", "dive into", "navigating the landscape", "harness the power", "at the end of the day", "leverage", "elevate", "seamlessly", "robust", "cutting-edge", "streamline", "revolutionize", "comprehensive", "delve", "unlock", "empower"
+- **No AI-style language.** Banned: "game-changer", "in today's fast-paced world", "dive into", "navigating the landscape", "harness the power", "leverage", "elevate", "seamlessly", "robust", "cutting-edge", "streamline", "revolutionize", "comprehensive", "delve", "groundbreaking", "holistic approach", "unlock", "empower"
 
 ### Writing Style
 
 - Short, direct sentences. Favor periods over semicolons.
-- Match the site's tone exactly. A blue-collar tone means writing like a tradesperson.
-- Use contractions naturally (it's, don't, you'll).
-- Avoid filler introductions. Get to the point in the first sentence.
-- Use active voice. "We strip the coating" not "The coating is stripped."
+- Match the site's tone exactly.
+- Use contractions naturally.
+- No filler introductions. Get to the point in the first sentence.
+- Active voice.
 
-### SEO Best Practices
+### Evidence & Linking
 
-- **Title tag** under 70 characters, front-load the primary keyword
-- **Meta description** under 160 characters, include a call to action or benefit
-- **H2/H3 headings** in the body should contain secondary keywords naturally
-- **Internal links** to 2-3 pages on the same site (from `internalLinks` in config)
-- **Tags** should match terms people actually search for in the industry
-- **Slug** should be short, keyword-rich, lowercase, hyphenated
-- **Image alt text** should describe the image AND include a relevant keyword
-- **First paragraph** should contain the primary keyword within the first 100 words
-- **Word count** 800-1200 words. Not shorter, not longer.
+- Every major claim must cite a source with an outbound link
+- 3-5 outbound links to authoritative sources per article
+- 2-3 internal links to site pages per article
+- References section at the bottom with numbered source list
+- Never fabricate statistics, study names, or citations
 
----
+### SEO & AIO Best Practices
 
-## Blog Post Output Format
+- **Title** under 70 characters, front-load the primary keyword
+- **Meta description** under 160 characters with benefit or CTA
+- **First 100 words** must contain the primary keyword
+- **TL;DR** summary near the top (2-3 sentences) for AI extraction
+- **H2/H3 headings** with secondary keywords, FAQ-style where appropriate
+- **Short paragraphs** (2-3 sentences) for readability and AI snippets
+- **Tags** should match terms people actually search for
+- **Slug** short, keyword-rich, lowercase, hyphenated
+- **Image alt text** descriptive with a relevant keyword
+- **Word count** 800-1200 words
 
-Each post is a `.md` file. The slug is derived from the title (lowercase,
-hyphenated, no special characters).
+### CTAs
 
-```markdown
----
-title: "Why Soda Blasting Is Replacing Sandblasting for Delicate Surfaces"
-description: "A look at when soda blasting makes more sense than traditional sandblasting for restoration and cleaning jobs."
-pubDate: 2026-03-14
-author: "Blasting Jack"
-image:
-  url: "/images/blog/soda-blasting-delicate-surfaces.webp"
-  alt: "Soda blasting a brick facade during restoration"
-tags: ["sandblasting", "soda blasting", "surface prep"]
-draft: false
----
-
-Post body here. 800-1200 words. SEO-optimized.
-Conversational tone matching the site's voice.
-Include practical advice, not generic filler.
-```
-
-### Frontmatter Rules
-
-- `title` — compelling, SEO-friendly, under 70 characters
-- `description` — meta description, under 160 characters
-- `pubDate` — ISO date (YYYY-MM-DD), set to the generation date
-- `author` — pulled from `sites.json`, not generated by AI
-- `image.url` — relative path: `/images/blog/{slug}.webp`
-- `image.alt` — descriptive alt text generated by Gemini
-- `tags` — 3-5 relevant tags, lowercase
-- `draft` — always `false` (review happens at the PR level, not via draft flag)
-
----
-
-## Duplicate Prevention (No history.json)
-
-**Do not use a local `history.json` file.** It won't persist between GitHub
-Action runs (each run gets a fresh checkout).
-
-Instead, **query the target repo via GitHub API** to get existing blog posts:
-
-1. Use Octokit to list files in `{contentPath}/` on the target repo
-2. Fetch the frontmatter of each existing post (title + tags)
-3. Pass the list of existing titles to Gemini in the prompt:
-   _"Do NOT write about any of these existing topics: [list]"_
-
-This is authoritative — the truth lives in the target repos, not in a local file.
-
----
-
-## Gemini Flash Prompt Strategy
-
-Use **JSON response mode** (`responseMimeType: "application/json"`) to guarantee
-valid JSON output. Do not rely on asking the model to "return JSON" in free text.
-
-### Prompt Template
-
-```
-You are a blog writer for a {industry} business.
-The website is {siteUrl}.
-The audience is {audience}.
-Write in a {tone} tone.
-
-Write an 800-1200 word blog post about a topic relevant to {industry}.
-
-Requirements:
-- Practical, specific, and actionable. No generic filler.
-- Write like someone who actually works in this industry
-- Include real-world examples and scenarios
-- SEO-optimized with natural keyword usage in headings and body text
-- Include 2-3 internal links naturally woven into the body text using these site pages: {internalLinks}
-- Include a compelling title (under 70 characters)
-- Include a meta description (under 160 characters)
-- Include 3-5 relevant tags (lowercase)
-- Include a descriptive alt text for a hero image related to the topic
-- Include a search query for finding a relevant stock photo
-
-CRITICAL WRITING RULES:
-- NEVER use em dashes. Use commas, periods or semicolons instead.
-- NEVER use the Oxford comma. In a list of three or more items, do NOT put a comma before "and" or "or".
-- NEVER use AI-style language: "game-changer", "in today's fast-paced world", "it's important to note", "dive into", "navigating the landscape", "harness the power", "at the end of the day", "leverage", "elevate", "seamlessly", "robust", "cutting-edge", "streamline", "revolutionize", "comprehensive", "delve"
-- Do NOT fabricate statistics, company names or case studies
-- Write in short, punchy sentences. Avoid compound sentences strung together with dashes.
-- Match the {tone} exactly. If it says "blue collar" then write like a tradesperson, not a marketing copywriter.
-
-The following topics have already been published. Pick something NEW:
-{existingTitles}
-
-Return as JSON:
-{
-  "title": "string",
-  "description": "string (under 160 chars)",
-  "tags": ["string"],
-  "body": "string (markdown formatted, 800-1200 words, with internal links)",
-  "imageAlt": "string (descriptive alt text for hero image)",
-  "imageSearchQuery": "string (Pexels search query for a relevant landscape photo)"
-}
-```
-
-### Gemini API Configuration
-
-```javascript
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash',
-  generationConfig: {
-    responseMimeType: 'application/json',
-    temperature: 0.7,  // creative but controlled
-  },
-});
-```
-
-### Error Handling
-
-- Wrap Gemini calls in try/catch
-- Retry once on failure (with 3-second delay)
-- Validate JSON response has all required fields before proceeding
-- If a field is missing, log a warning and skip that site
+- Mid-article CTA after a compelling point (natural, not salesy)
+- Closing CTA encouraging the reader to book, call, or visit
+- Tied to the article's evidence, not generic marketing language
 
 ---
 
 ## Image Handling
 
-1. Search Pexels API with `imageSearchQuery` from Gemini response
-2. Download the first landscape-orientation result (minimum 1280px wide)
-3. Process with Sharp:
-   - Resize to 1280px wide (maintain aspect ratio)
-   - Convert to WebP format
-   - Compress to quality 80 (target <200KB)
-4. Include the processed image in the PR commit
-5. Reference in frontmatter as `/images/blog/{slug}.webp`
+### Selection & Scoring
 
-### Pexels Fallback
+1. Search Pexels with the AI-generated `imageSearchQuery` (15 results)
+2. Filter out photos already used in the current run (dedup via photo ID set)
+3. Score remaining photos by relevance:
+   - Clinical/treatment keywords in alt text (+2 each)
+   - Landscape aspect ratio 1.4-2.0 (+3)
+   - Source width ≥ 2000px (+1)
+   - Generic portrait/selfie keywords (-3 each)
+4. Pick the highest-scored unused photo
+5. If all results are used, paginate to next page (up to 3 pages)
 
-If Pexels returns no results:
-1. Retry with a broader search query (first 2 words of `imageSearchQuery`)
-2. If still no results, use a generic industry-related query (e.g., "construction work")
-3. If all fails, skip the image and log a warning (post still gets created)
+### Processing
+
+- Resize to 1280px wide (maintain aspect ratio)
+- Convert to WebP, quality 80 (target <200KB)
+- Include in the PR commit alongside the markdown
+
+### Fallback Cascade
+
+1. Original search query (15 results, 3 pages)
+2. First 3 words of the query
+3. Industry-specific fallback (e.g., "chiropractic spine adjustment treatment")
+
+Industry fallbacks are configured per-industry, not a generic "business office".
 
 ---
 
 ## GitHub API — PR-Based Publishing
 
-Use the **Git Trees + Blobs API** (via Octokit) to create a single commit
-containing both the markdown post and the image, then open a pull request.
+Uses the **Git Trees + Blobs API** (via Octokit) to create a single atomic
+commit containing both the markdown post and the image, then opens a PR.
 
-### Steps per Site
+### Steps per Post
 
-```
 1. Get the default branch SHA
 2. Create a blob for the markdown file (utf-8)
 3. Create a blob for the image file (base64)
 4. Create a tree with both blobs
 5. Create a commit pointing to the new tree
-6. Create a new branch: blog/auto/{slug}
-7. Create a pull request from that branch to the default branch
-8. Add labels: ["blog-publisher", "auto-generated"]
-```
-
-### Why PRs Instead of Direct Commits
-
-- Human review before anything goes live
-- Vercel generates a preview deployment for every PR automatically
-- Reviewers can leave comments, suggest edits, or close
-- Full audit trail of what was generated and when
-- No risk of broken content reaching production
-
----
-
-## Review Email (Resend)
-
-After creating the PR, send a review notification via the **Resend API**.
-
-```javascript
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-await resend.emails.send({
-  from: 'Blog Publisher <blog@websitelab.dev>',
-  to: site.reviewEmail,
-  subject: `[Website Lab] New blog post for review — ${site.siteUrl}`,
-  html: reviewEmailHtml({
-    title: post.title,
-    description: post.description,
-    tags: post.tags,
-    preview: post.body.slice(0, 500) + '...',
-    previewUrl: vercelPreviewUrl,
-    prUrl: pr.html_url,
-  }),
-});
-```
-
-The email contains:
-- Post title, description, and tags
-- First ~200 words as an inline preview
-- Link to full Vercel preview deployment
-- Direct links to approve (merge), deny (close), or comment on the PR
+6. Create a new branch: `blog/auto/{slug}`
+7. Create a PR from that branch to the default branch
+8. Add labels: `blog-publisher`, `auto-generated`
 
 ---
 
@@ -484,6 +339,8 @@ jobs:
           GITHUB_PAT: ${{ secrets.ORG_GITHUB_PAT }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REVIEW_SECRET: ${{ secrets.REVIEW_SECRET }}
+          REVIEW_API_URL: https://blog-publisher-iota.vercel.app
 ```
 
 ---
@@ -499,8 +356,6 @@ Set on the blog-publisher repo: `gh secret set <NAME> --repo websitelab/blog-pub
 | `PEXELS_API_KEY`  | Pexels image API key (free tier)               |
 | `RESEND_API_KEY`  | Resend email API key                           |
 | `REVIEW_SECRET`   | HMAC secret for review action tokens           |
-
-Vercel env vars (blog-publisher project): `GITHUB_PAT`, `REVIEW_SECRET`
 
 The PAT needs these permissions on the target repos:
 - `Contents: Read and Write` (to create branches and commits)
@@ -524,18 +379,18 @@ blog-publisher/
 │   ├── feedback.js              # Vercel serverless — feedback form + trigger regen
 │   └── utils.js                 # HMAC token verification, branded HTML responses
 ├── scripts/
-│   ├── publish.js               # Main orchestrator
-│   ├── generate.js              # Gemini content generation
+│   ├── publish.js               # Main orchestrator (--count, --site, --dry-run)
+│   ├── generate.js              # Two-phase: research (grounded) + write (JSON)
 │   ├── regenerate.js            # Revise existing post from feedback
 │   ├── auto-publish.js          # Merge stale PRs (24hr+)
-│   ├── images.js                # Pexels fetch + Sharp processing
+│   ├── images.js                # Pexels fetch, score, deduplicate + Sharp
 │   ├── github.js                # Octokit: PR creation, dedup, preview URL
-│   ├── email.js                 # Resend review email (branded, with tokens)
-│   └── utils.js                 # Slugify, validation, logging
+│   ├── email.js                 # Resend review email (to + cc, branded)
+│   └── utils.js                 # Slugify, buildMarkdown, validation, logging
 ├── templates/
 │   └── review-email.html        # Email template — Website Lab branded
 ├── vercel.json                  # Vercel config for review API
-├── sites.json                   # Site config
+├── sites.json                   # Site config (multi-site)
 ├── package.json
 ├── .gitignore
 └── prompt.md                    # This file
@@ -545,56 +400,46 @@ blog-publisher/
 
 ## Key Design Decisions
 
+- **Two-phase generation** — research grounding + writing ensures evidence-based content with real sources
 - **GitHub Action over Vercel cron** — 6hr execution limit vs 800s, no cron slots used, free
-- **Gemini Flash over Claude API** — cheaper for bulk content generation, fast enough for blog posts
-- **JSON response mode** — guarantees valid JSON from Gemini, no fragile regex parsing
-- **Pexels over AI-generated images** — real photos, free, no attribution required for API usage
+- **Gemini Flash** — cheap, fast, supports Google Search grounding and JSON mode
+- **Image dedup** — tracks used Pexels photo IDs in-memory across batch runs
+- **Image scoring** — prefers clinical/treatment imagery, penalizes generic portraits
+- **Industry-specific fallbacks** — better default images than generic stock photos
 - **PRs over direct commits** — enables human review, Vercel preview deployments, audit trail
 - **Review API on Vercel** — clients approve/deny/feedback via HMAC-signed URLs, no GitHub account needed
-- **Auto-publish after 24hr** — PRs merge automatically if no action taken, checked hourly
-- **Feedback triggers regeneration** — Gemini revises post based on feedback, targeted edits only (90%+ fidelity)
-- **Resend for review emails** — Website Lab branded, from "David Peyton", auto-publish notice
-- **Query repos for dedup** — authoritative source of truth, no stale local files
-- **Git Trees API** — single atomic commit with both markdown + image (not two separate commits)
-- **Astro schema alignment** — frontmatter must pass Zod validation or the target build breaks
-- **JSON config over database** — version controlled, no external dependency, dead simple
-- **Modular scripts** — separate files for generation, images, GitHub, email (testable, maintainable)
+- **Auto-publish after 24hr** — PRs merge automatically if no action taken
+- **Feedback triggers regeneration** — Gemini revises post based on feedback
+- **CC support** — review emails route to reviewer (to) + backup inbox (cc)
+- **Business name enforcement** — exact name from config, never abbreviated by AI
+- **Batch mode** — `--count N` generates multiple posts with accumulated dedup
+- **Image URL derivation** — strips `public/` prefix from `imagePath`, handles subdirectory roots
+- **Generic framing** — prompts work for any industry, not just healthcare
 
 ---
 
-## Edge Cases to Handle
+## Edge Cases
 
-- **Duplicate topics** — query existing posts in target repo, pass titles to Gemini prompt
-- **Gemini rate limits** — 3-second delay between sites, retry once on 429
-- **Gemini bad JSON** — validate all required fields, skip site on persistent failure
-- **Pexels no results** — cascade: broader query → generic industry query → skip image
-- **Image too large** — Sharp compresses to quality 80 WebP, target <200KB
-- **Repo missing content collection** — check for `contentPath` existence via API, skip + log warning
-- **PR already exists for site** — check for open PRs with `blog-publisher` label, skip if one exists
-- **Resend email failure** — log warning but don't fail the run (PR still exists for review)
-- **PAT permissions error** — log clear error message identifying which permission is missing
-
----
-
-## Dry Run Mode
-
-`node scripts/publish.js --dry-run`
-
-In dry run mode:
-- Gemini generates the content (validates the prompt works)
-- Pexels fetches and processes the image (validates the pipeline)
-- Logs what *would* be committed and where
-- Does NOT create branches, commits, PRs, or send emails
-- Useful for testing before the first real run
+- **Duplicate topics** — query existing posts + accumulate titles in batch mode
+- **Duplicate images** — track used photo IDs, paginate through results
+- **Gemini rate limits** — 5-second delay between posts, retry once on 429/503
+- **Gemini bad JSON** — validate all required fields, skip post on persistent failure
+- **Research failure** — falls back to standard generation without grounding
+- **Pexels no results** — cascade: specific query → shorter query → industry fallback
+- **Subdirectory repos** — `imagePath` like `website/public/images/articles` handled correctly
+- **PR already exists** — checked in single-post mode, skipped in batch mode
+- **Email failure** — logged but doesn't fail the run
 
 ---
 
-## Future Enhancements
+## Cost Estimate
 
-Tracked in Epic #5 on GitHub.
+For 3 sites × 4 articles/month (weekly schedule) = 12 articles/month:
 
-- Weekly frequency option per site (#9)
-- Topic calendar — pre-planned topics per month (#10)
-- SEO keyword targeting from Google Search Console (#11)
-- A/B test different tones per site (#13)
-- Publishing dashboard (#14)
+| Service    | Usage                | Monthly Cost |
+|------------|----------------------|-------------|
+| Gemini API | 24 calls (research + write) | ~$1-2 |
+| Pexels     | Free tier            | $0          |
+| Resend     | Free tier (100/day)  | $0          |
+| GitHub Actions | ~15 min/month   | $0          |
+| **Total**  |                      | **~$1-3**   |
