@@ -5,7 +5,10 @@ const PEXELS_BASE = 'https://api.pexels.com/v1/search';
 const TARGET_WIDTH = 1280;
 const WEBP_QUALITY = 80;
 
-// Industry-specific fallbacks (much better than "business office")
+// Track used photo IDs across the entire run to prevent duplicates
+const usedPhotoIds = new Set();
+
+// Industry-specific fallbacks
 const INDUSTRY_FALLBACKS = {
   default: 'healthcare professional clinic',
   chiropractic: 'chiropractic spine adjustment treatment',
@@ -23,12 +26,13 @@ function getFallbackQuery(industry) {
   return INDUSTRY_FALLBACKS.default;
 }
 
-async function searchPexels(query, perPage = 10) {
+async function searchPexels(query, perPage = 15, page = 1) {
   const url = new URL(PEXELS_BASE);
   url.searchParams.set('query', query);
   url.searchParams.set('orientation', 'landscape');
   url.searchParams.set('size', 'large');
   url.searchParams.set('per_page', String(perPage));
+  url.searchParams.set('page', String(page));
 
   const res = await fetch(url, {
     headers: { Authorization: process.env.PEXELS_API_KEY },
@@ -97,7 +101,6 @@ async function downloadAndProcess(imageUrl) {
 }
 
 export async function fetchHeroImage(searchQuery, industry) {
-  // Build a cascade of search queries from specific to general
   const fallbackQuery = getFallbackQuery(industry);
   const queries = [
     searchQuery,
@@ -106,23 +109,37 @@ export async function fetchHeroImage(searchQuery, industry) {
   ];
 
   for (const query of queries) {
-    try {
-      const photos = await searchPexels(query, 10);
-      if (photos.length === 0) continue;
+    // Try multiple pages to find unused images
+    for (let page = 1; page <= 3; page++) {
+      try {
+        const photos = await searchPexels(query, 15, page);
+        if (photos.length === 0) break; // no more results for this query
 
-      // Score and sort photos, pick the best one
-      const scored = photos
-        .map(p => ({ photo: p, score: scorePhoto(p) }))
-        .sort((a, b) => b.score - a.score);
+        // Filter out already-used photos, then score and sort
+        const available = photos.filter(p => !usedPhotoIds.has(p.id));
+        if (available.length === 0) {
+          log('images', `All ${photos.length} results for "${query}" page ${page} already used, trying next page...`);
+          continue;
+        }
 
-      const best = scored[0].photo;
-      const imageUrl = best.src.large2x;
+        const scored = available
+          .map(p => ({ photo: p, score: scorePhoto(p) }))
+          .sort((a, b) => b.score - a.score);
 
-      log('images', `Found ${photos.length} images for "${query}", picked best (score: ${scored[0].score})`);
-      const result = await downloadAndProcess(imageUrl);
-      if (result) return result;
-    } catch (err) {
-      log('images', `Error fetching image for "${query}": ${err.message}`);
+        const best = scored[0].photo;
+        const imageUrl = best.src.large2x;
+
+        log('images', `Found ${available.length} unused images for "${query}" (page ${page}), picked ID ${best.id} (score: ${scored[0].score})`);
+
+        const result = await downloadAndProcess(imageUrl);
+        if (result) {
+          // Mark this photo as used
+          usedPhotoIds.add(best.id);
+          return result;
+        }
+      } catch (err) {
+        log('images', `Error fetching image for "${query}" page ${page}: ${err.message}`);
+      }
     }
   }
 
