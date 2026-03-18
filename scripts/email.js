@@ -121,7 +121,9 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isR
   let blogPreviewUrl = prUrl;
   if (previewUrl && slug) {
     const base = previewUrl.replace(/\/$/, '');
-    blogPreviewUrl = `${base}/blog/${slug}.html`;
+    // Derive URL section from contentPath (e.g. "src/content/blog" → "blog", "website/src/content/articles" → "articles")
+    const section = site.contentPath.split('/').pop();
+    blogPreviewUrl = `${base}/${section}/${slug}`;
   }
 
   // Build review action URLs
