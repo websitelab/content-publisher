@@ -1,48 +1,24 @@
 /**
- * Review email module — sends casual, varied review notifications via Resend.
+ * Review email module — plain-text style HTML emails via Resend.
+ * Designed to look like a personal email from David, not an automated system.
  */
 
 import { Resend } from 'resend';
 import { createHmac } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { log } from './utils.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const template = readFileSync(join(__dirname, '..', 'templates', 'review-email.html'), 'utf-8');
 
 const REVIEW_API_BASE = process.env.REVIEW_API_URL || 'https://blog-publisher-websitelab.vercel.app';
 
-const SUBJECT_TEMPLATES = [
-  (s, t) => `New post for ${s}: "${t}"`,
-  (s, t) => `Blog post ready for review: ${t}`,
-  (s, t) => `Take a look: new ${s} blog post`,
-  (s, t) => `Fresh content for ${s}`,
-  (s, t) => `${s} blog post needs your eyes`,
-  (s, t) => `Quick review? New post for ${s}`,
-  (s, t) => `New ${s} article: "${t}"`,
-];
+/** Map hostnames to short labels for subject lines. */
+const SITE_LABELS = {
+  'mispineandjoint.com': 'MSJC',
+  'spineandsportsmi.com': 'CSSC',
+  'www.websitelab.biz': 'Website Lab',
+};
 
-const GREETINGS = [
-  'Hey,',
-  'Hi there,',
-  'Hey there,',
-  'Hi,',
-  'Morning,',
-  'Quick one for you,',
-];
-
-const SUMMARIES = [
-  (s, t) => `New blog post ready for ${s}:`,
-  (s, t) => `Wrote a new post for ${s}:`,
-  (s, t) => `Got a fresh blog post for ${s}. Take a look:`,
-  (s, t) => `Here's a new post for ${s}:`,
-  (s, t) => `New blog post for ${s}:`,
-];
-
-function pick(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+function getSiteLabel(siteUrl) {
+  const hostname = new URL(siteUrl).hostname;
+  return SITE_LABELS[hostname] || hostname;
 }
 
 function truncateToWords(text, wordCount) {
@@ -75,30 +51,43 @@ function createReviewToken(repo, prNumber) {
   return `${data}.${sig}`;
 }
 
-function buildEmailHtml({ title, body, previewUrl, approveUrl, denyUrl, feedbackUrl, siteName, isRevision }) {
-  const greeting = pick(GREETINGS);
-  const summary = isRevision
-    ? `Revised the blog post for ${siteName} based on your feedback:`
-    : pick(SUMMARIES)(siteName, title);
+function buildEmailHtml({ title, body, previewUrl, approveUrl, denyUrl, feedbackUrl, siteLabel, isRevision }) {
   const plainPreview = stripMarkdown(body);
   const preview = truncateToWords(plainPreview, 80);
 
-  return template
-    .replace('{{greeting}}', greeting)
-    .replace('{{summary}}', summary)
-    .replace('{{title}}', title)
-    .replace('{{preview}}', preview)
-    .replace('{{previewUrl}}', previewUrl)
-    .replace('{{approveUrl}}', approveUrl)
-    .replace('{{denyUrl}}', denyUrl)
-    .replace('{{feedbackUrl}}', feedbackUrl)
-    .replace('{{siteName}}', siteName);
+  const intro = isRevision
+    ? `Revised the blog post for ${siteLabel} based on your feedback. Here's the updated version:`
+    : `New blog post is up for ${siteLabel}. Here's a quick look:`;
+
+  return `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #222; line-height: 1.5;">
+<p>Hey Doc,</p>
+
+<p>${intro}</p>
+
+<p><strong>${title}</strong></p>
+
+<p style="color: #555;">${preview}</p>
+
+<p><a href="${previewUrl}" style="color: #1a73e8;">Read the full post</a></p>
+
+<p style="color: #888; font-size: 13px;">This will go live automatically in 24 hours unless you take action below.</p>
+
+<p>
+<a href="${approveUrl}" style="color: #16a34a; font-weight: bold; text-decoration: none;">Approve</a> &nbsp;&nbsp;
+<a href="${feedbackUrl}" style="color: #1a73e8; text-decoration: none;">Request changes</a> &nbsp;&nbsp;
+<a href="${denyUrl}" style="color: #999; text-decoration: none;">Remove</a>
+</p>
+
+<p style="margin-top: 24px;">David Peyton<br>
+<span style="color: #888; font-size: 13px;">Website Lab &middot; (586) 209-4725<br>
+<a href="https://www.websitelab.biz" style="color: #888; text-decoration: none;">websitelab.biz</a></span></p>
+</div>`;
 }
 
 /**
  * Send a review email for a generated blog post.
  * @param {object} options
- * @param {boolean} options.isRevision - If true, use revision subject/summary format
+ * @param {boolean} options.isRevision - If true, use revision subject format
  */
 export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isRevision = false } = {}) {
   if (!process.env.RESEND_API_KEY) {
@@ -107,21 +96,16 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isR
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const siteName = new URL(site.siteUrl).hostname;
+  const siteLabel = getSiteLabel(site.siteUrl);
 
-  let subject;
-  if (isRevision) {
-    subject = `Revision: "${post.title}"`;
-  } else {
-    const subjectFn = pick(SUBJECT_TEMPLATES);
-    subject = subjectFn(siteName, post.title);
-  }
+  const subject = isRevision
+    ? `Revised ${siteLabel} Blog: ${post.title}`
+    : `New ${siteLabel} Blog: ${post.title}`;
 
   // Build the direct blog post preview link
   let blogPreviewUrl = prUrl;
   if (previewUrl && slug) {
     const base = previewUrl.replace(/\/$/, '');
-    // Derive URL section from contentPath (e.g. "src/content/blog" → "blog", "website/src/content/articles" → "articles")
     const section = site.contentPath.split('/').pop();
     blogPreviewUrl = `${base}/${section}/${slug}`;
   }
@@ -148,7 +132,7 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isR
     approveUrl,
     denyUrl,
     feedbackUrl,
-    siteName,
+    siteLabel,
     isRevision,
   });
 
@@ -160,7 +144,6 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isR
       html,
     };
 
-    // Support CC field from site config
     if (site.ccEmail) {
       emailPayload.cc = Array.isArray(site.ccEmail) ? site.ccEmail : [site.ccEmail];
     }
