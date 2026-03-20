@@ -133,7 +133,7 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isR
     denyUrl,
     feedbackUrl,
     siteLabel,
-    greeting: site.reviewGreeting || 'Hey,',
+    greeting: site.reviewGreeting || 'Hi there,',
     isRevision,
   });
 

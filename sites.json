@@ -9,7 +9,7 @@
     "siteUrl": "https://www.websitelab.biz",
     "author": "Website Lab",
     "reviewEmail": "hello@websitelab.biz",
-    "reviewGreeting": "Hey,",
+    "reviewGreeting": "Hi there,",
     "internalLinks": [
       { "path": "/web-design", "label": "our web design services" },
       { "path": "/google-business-profile", "label": "Google Business Profile setup" },
