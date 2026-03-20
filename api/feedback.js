@@ -59,11 +59,11 @@ export default async function handler(req, res) {
       body: `**Reviewer feedback:**\n\n${feedback.trim()}`,
     });
 
-    // Trigger regeneration workflow on blog-publisher repo
+    // Trigger regeneration workflow on content-publisher repo
     try {
       await octokit.rest.actions.createWorkflowDispatch({
         owner: 'websitelab',
-        repo: 'blog-publisher',
+        repo: 'content-publisher',
         workflow_id: 'regenerate.yml',
         ref: 'main',
         inputs: {

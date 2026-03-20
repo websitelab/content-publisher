@@ -13,6 +13,11 @@ function extractTitle(frontmatter) {
   return match ? match[1] : null;
 }
 
+function extractDescription(frontmatter) {
+  const match = frontmatter.match(/^description:\s*"(.+?)"\s*$/m);
+  return match ? match[1] : '';
+}
+
 export async function getExistingTitles(repo, contentPath) {
   const { owner, repo: repoName } = parseOwnerRepo(repo);
 
@@ -62,7 +67,7 @@ export async function checkExistingPR(repo) {
   });
 
   return prs.some(pr =>
-    pr.labels.some(label => label.name === 'blog-publisher')
+    pr.labels.some(label => label.name === 'content-publisher')
   );
 }
 
@@ -188,12 +193,13 @@ export async function createBlogPR(repo, slug, markdownContent, imageBuffer, sit
     }
 
     const title = extractTitle(markdownContent) || slug;
+    const description = extractDescription(markdownContent);
 
     const { data: pr } = await octokit.rest.pulls.create({
       owner,
       repo: repoName,
       title,
-      body: 'Auto-generated blog post by Blog Publisher\n\n---\n*Review and merge to publish.*',
+      body: `Auto-generated blog post by Content Publisher\n\n<!-- blog-description:${description} -->\n\n---\n*Review and merge to publish.*`,
       head: branchName,
       base: defaultBranch,
     });
@@ -203,7 +209,7 @@ export async function createBlogPR(repo, slug, markdownContent, imageBuffer, sit
         owner,
         repo: repoName,
         issue_number: pr.number,
-        labels: ['blog-publisher', 'auto-generated'],
+        labels: ['content-publisher', 'auto-generated'],
       });
     } catch {
       log(site, 'Could not add labels — they may not exist in the repo');

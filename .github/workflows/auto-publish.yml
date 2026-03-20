@@ -1,4 +1,4 @@
-name: Auto-publish Blog Posts (24hr)
+name: Auto-publish Posts (24hr)
 
 on:
   schedule:
@@ -19,7 +19,10 @@ jobs:
 
       - run: npm ci
 
-      - name: Auto-merge stale blog PRs
+      - name: Auto-merge stale content PRs
         run: node scripts/auto-publish.js
         env:
           GITHUB_PAT: ${{ secrets.ORG_GITHUB_PAT }}
+          FB_PAGE_TOKEN_MSJC: ${{ secrets.FB_PAGE_TOKEN_MSJC }}
+          FB_PAGE_TOKEN_CSSC: ${{ secrets.FB_PAGE_TOKEN_CSSC }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}

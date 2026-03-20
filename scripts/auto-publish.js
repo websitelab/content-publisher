@@ -2,13 +2,14 @@
 
 /**
  * Auto-publish blog posts that have been pending review for 24+ hours.
- * Merges any open PR with the 'blog-publisher' label older than 24 hours.
+ * Merges any open PR with the 'content-publisher' label older than 24 hours.
  */
 
 import { Octokit } from 'octokit';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { postToFacebook } from './facebook.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const octokit = new Octokit({ auth: process.env.GITHUB_PAT });
@@ -29,7 +30,7 @@ async function main() {
     });
 
     const blogPRs = prs.filter(pr =>
-      pr.labels.some(l => l.name === 'blog-publisher')
+      pr.labels.some(l => l.name === 'content-publisher')
     );
 
     for (const pr of blogPRs) {
@@ -52,6 +53,13 @@ async function main() {
           });
 
           console.log(`  Merged successfully`);
+
+          // Facebook posting — isolated so it never breaks the merge flow
+          try {
+            await postToFacebook(site, pr.title, pr.body);
+          } catch (fbErr) {
+            console.error(`  Facebook posting failed: ${fbErr.message}`);
+          }
         } catch (err) {
           console.error(`  Failed to merge: ${err.message}`);
         }

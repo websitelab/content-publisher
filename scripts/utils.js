@@ -1,5 +1,5 @@
 /**
- * Shared utilities for the blog publisher.
+ * Shared utilities for the content publisher.
  */
 
 /**

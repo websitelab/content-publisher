@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Blog Publisher — Main Orchestrator
+ * Content Publisher — Main Orchestrator
  *
  * Reads sites.json, generates blog posts via Gemini, fetches hero images
  * from Pexels, creates PRs on target repos, and sends review emails.
@@ -150,7 +150,7 @@ async function processSite(site, count) {
     try {
       const hasOpenPR = await checkExistingPR(site.repo);
       if (hasOpenPR) {
-        log(site, 'Open PR with blog-publisher label already exists, skipping');
+        log(site, 'Open PR with content-publisher label already exists, skipping');
         return [{ site, status: 'skipped', reason: 'existing PR' }];
       }
     } catch (err) {
@@ -191,7 +191,7 @@ async function main() {
   const count = parseCount();
   const siteFilter = parseSiteFilter();
 
-  console.log(`Blog Publisher ${DRY_RUN ? '(DRY RUN) ' : ''}${count > 1 ? `(${count} posts per site) ` : ''}`);
+  console.log(`Content Publisher ${DRY_RUN ? '(DRY RUN) ' : ''}${count > 1 ? `(${count} posts per site) ` : ''}`);
   console.log('='.repeat(50));
 
   checkEnvVars();

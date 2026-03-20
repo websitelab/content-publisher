@@ -1,5 +1,7 @@
 import { Octokit } from 'octokit';
 import { verifyReviewToken, htmlResponse } from './utils.js';
+import { postToFacebook } from '../scripts/facebook.js';
+import sites from '../sites.json' with { type: 'json' };
 
 export default async function handler(req, res) {
   const token = req.query.token;
@@ -25,6 +27,16 @@ export default async function handler(req, res) {
       owner, repo, pull_number: parsed.pr,
       merge_method: 'squash',
     });
+
+    // Facebook posting — isolated so it never breaks the approval response
+    try {
+      const site = sites.find(s => s.repo === parsed.repo);
+      if (site) {
+        await postToFacebook(site, pr.title, pr.body);
+      }
+    } catch (fbErr) {
+      console.error('Facebook posting failed:', fbErr.message);
+    }
 
     return res.send(htmlResponse('Post Approved!', 'The blog post has been approved and will be live on the site shortly. You can close this tab.'));
   } catch (err) {

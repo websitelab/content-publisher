@@ -1,4 +1,4 @@
-name: Regenerate Blog Post from Feedback
+name: Regenerate Post from Feedback
 
 on:
   workflow_dispatch:

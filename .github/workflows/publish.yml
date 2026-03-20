@@ -1,4 +1,4 @@
-name: Weekly Blog Publisher
+name: Weekly Content Publisher
 
 on:
   schedule:

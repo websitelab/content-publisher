@@ -30,7 +30,12 @@
       { "path": "/chiropractic", "label": "our chiropractic care" },
       { "path": "/physical-therapy", "label": "physical therapy services" },
       { "path": "/massage-therapy", "label": "massage therapy" }
-    ]
+    ],
+    "facebook": {
+      "pageId": "155713471174031",
+      "tokenEnvVar": "FB_PAGE_TOKEN_MSJC",
+      "articlePath": "/articles"
+    }
   },
   {
     "repo": "websitelab/spineandsportsmi",
@@ -47,6 +52,11 @@
       { "path": "/chiropractic", "label": "our chiropractic care" },
       { "path": "/about", "label": "about our practice" },
       { "path": "/contact", "label": "contact us" }
-    ]
+    ],
+    "facebook": {
+      "pageId": "123530313996598",
+      "tokenEnvVar": "FB_PAGE_TOKEN_CSSC",
+      "articlePath": "/articles"
+    }
   }
 ]
