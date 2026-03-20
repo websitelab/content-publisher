@@ -9,6 +9,7 @@
     "siteUrl": "https://www.websitelab.biz",
     "author": "Website Lab",
     "reviewEmail": "hello@websitelab.biz",
+    "reviewGreeting": "Hey,",
     "internalLinks": [
       { "path": "/web-design", "label": "our web design services" },
       { "path": "/google-business-profile", "label": "Google Business Profile setup" },
@@ -25,6 +26,7 @@
     "siteUrl": "https://mispineandjoint.com",
     "author": "MI Spine and Joint",
     "reviewEmail": "drdeboadegbenro@gmail.com",
+    "reviewGreeting": "Hey Doc,",
     "ccEmail": "business@mispineandjoint.com",
     "internalLinks": [
       { "path": "/chiropractic", "label": "our chiropractic care" },
@@ -47,6 +49,7 @@
     "siteUrl": "https://spineandsportsmi.com",
     "author": "Comprehensive Spine & Sports Center",
     "reviewEmail": "drdeboadegbenro@gmail.com",
+    "reviewGreeting": "Hey Doc,",
     "ccEmail": "business@mispineandjoint.com",
     "internalLinks": [
       { "path": "/chiropractic", "label": "our chiropractic care" },

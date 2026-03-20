@@ -51,7 +51,7 @@ function createReviewToken(repo, prNumber) {
   return `${data}.${sig}`;
 }
 
-function buildEmailHtml({ title, body, previewUrl, approveUrl, denyUrl, feedbackUrl, siteLabel, isRevision }) {
+function buildEmailHtml({ title, body, previewUrl, approveUrl, denyUrl, feedbackUrl, siteLabel, greeting, isRevision }) {
   const plainPreview = stripMarkdown(body);
   const preview = truncateToWords(plainPreview, 80);
 
@@ -60,7 +60,7 @@ function buildEmailHtml({ title, body, previewUrl, approveUrl, denyUrl, feedback
     : `New blog post is up for ${siteLabel}. Here's a quick look:`;
 
   return `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #222; line-height: 1.5;">
-<p>Hey Doc,</p>
+<p>${greeting}</p>
 
 <p>${intro}</p>
 
@@ -133,6 +133,7 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isR
     denyUrl,
     feedbackUrl,
     siteLabel,
+    greeting: site.reviewGreeting || 'Hey,',
     isRevision,
   });
 
