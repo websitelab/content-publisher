@@ -51,13 +51,28 @@ export function buildMarkdown(post, site, slug) {
 
 /**
  * Validate that a Gemini response has all required fields.
+ * Auto-fills recoverable fields (imageAlt, imageSearchQuery) instead of failing.
  * Returns an array of missing field names, or empty if valid.
  */
-export function validatePost(post) {
-  const required = ['title', 'description', 'tags', 'body', 'imageAlt', 'imageSearchQuery'];
-  const missing = required.filter(f => !post[f]);
+export function validatePost(post, site = null) {
+  const missing = [];
 
+  // Hard requirements — can't proceed without these
+  if (!post.title) missing.push('title');
+  if (!post.description) missing.push('description');
+  if (!post.body) missing.push('body');
+  if (!post.tags) missing.push('tags');
   if (post.tags && !Array.isArray(post.tags)) missing.push('tags (not an array)');
+
+  // Soft requirements — auto-fill with sensible defaults
+  if (!post.imageAlt && post.title) {
+    post.imageAlt = `Article image for: ${post.title}`;
+  }
+  if (!post.imageSearchQuery) {
+    post.imageSearchQuery = site?.industry
+      ? site.industry.split(':')[0].trim()
+      : (post.title || 'professional office').toLowerCase();
+  }
 
   // Auto-truncate instead of failing
   if (post.title && post.title.length > 70) {

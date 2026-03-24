@@ -117,13 +117,14 @@ OUTBOUND LINKS (MANDATORY):
 
 INTERNAL LINKS (MANDATORY):
 - Include 2-3 internal links naturally woven into the body text: ${formatInternalLinks(site)}
-- Also link to the articles listing page (${site.siteUrl}/articles) at least once if it fits naturally.
+- Also link to the ${site.contentPath.split('/content/').pop() || 'articles'} listing page (${site.siteUrl}/${site.contentPath.split('/content/').pop() || 'articles'}) at least once if it fits naturally.
 - Internal links should use the full URL format: ${site.siteUrl}/page-path
 
 CALLS TO ACTION (MANDATORY):
 - Include at least TWO clear CTAs within the article:
-  1. A mid-article CTA after making a compelling point (e.g., "If you're experiencing [symptom], [business name] can help. [Link to contact/booking page].")
-  2. A strong closing CTA at the end of the article encouraging the reader to take the next step (book, call, visit, etc.)
+  1. A mid-article CTA after making a compelling point (e.g., "If you're experiencing [symptom], ${businessName} can help. [Link to relevant service page].")
+  2. A strong closing CTA at the end encouraging the reader to take action. This MUST include a clickable markdown link to ${site.siteUrl}/contact or another relevant internal page.
+- EVERY CTA must contain at least one markdown link. An unlinked CTA is useless.
 - CTAs should feel natural, not salesy. Tie them to the article's evidence.
 
 SEO & AIO BEST PRACTICES (MANDATORY):
@@ -180,7 +181,11 @@ Return as JSON:
 async function callGemini(site, research, existingTitles, businessName) {
   const prompt = buildWritePrompt(site, research, existingTitles, businessName);
   const result = await writeModel.generateContent(prompt);
-  const text = result.response.text();
+  let text = result.response.text();
+
+  // Strip markdown code fences if Gemini wraps the JSON
+  text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+
   return JSON.parse(text);
 }
 
@@ -199,29 +204,39 @@ export async function generatePost(site, existingTitles) {
   // Phase 1.5: Get correct business name
   const businessName = await discoverBusinessName(site);
 
-  // Phase 2: Write the article
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // Phase 2: Write the article (3 attempts with exponential backoff)
+  const MAX_ATTEMPTS = 3;
+  const BACKOFF = [3000, 6000, 12000];
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
       const post = await callGemini(site, research, existingTitles, businessName);
 
-      const errors = validatePost(post);
+      const errors = validatePost(post, site);
       if (errors.length > 0) {
         log(site, `Validation failed: ${errors.join(', ')}`);
-        if (attempt === 0) {
-          log(site, 'Retrying in 3 seconds...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
+        if (attempt < MAX_ATTEMPTS - 1) {
+          const delay = BACKOFF[attempt] || 12000;
+          log(site, `Retrying in ${delay / 1000} seconds (attempt ${attempt + 2}/${MAX_ATTEMPTS})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
         return null;
+      }
+
+      // Quality warnings (non-fatal)
+      if (post.body && site.siteUrl && !post.body.includes(site.siteUrl)) {
+        log(site, 'WARNING: Body contains no internal links');
       }
 
       log(site, `Generated: "${post.title}"`);
       return post;
     } catch (err) {
       log(site, `Generation error: ${err.message}`);
-      if (attempt === 0) {
-        log(site, 'Retrying in 3 seconds...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
+      if (attempt < MAX_ATTEMPTS - 1) {
+        const delay = BACKOFF[attempt] || 12000;
+        log(site, `Retrying in ${delay / 1000} seconds (attempt ${attempt + 2}/${MAX_ATTEMPTS})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       } else {
         return null;
       }

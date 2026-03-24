@@ -237,7 +237,14 @@ async function main() {
   }
 
   const failed = allResults.filter(r => r.status === 'failed');
+  const succeeded = allResults.filter(r => r.status === 'published' || r.status === 'dry-run' || r.status === 'skipped');
+
   if (failed.length > 0) {
+    console.log(`\nWARNING: ${failed.length} site(s) had failures (see above)`);
+  }
+
+  // Only exit with error if ALL sites failed (partial success is still success)
+  if (failed.length > 0 && succeeded.length === 0) {
     process.exit(1);
   }
 }

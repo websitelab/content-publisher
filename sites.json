@@ -32,7 +32,8 @@
     "internalLinks": [
       { "path": "/chiropractic", "label": "our chiropractic care" },
       { "path": "/physical-therapy", "label": "physical therapy services" },
-      { "path": "/massage-therapy", "label": "massage therapy" }
+      { "path": "/massage-therapy", "label": "massage therapy" },
+      { "path": "/contact", "label": "contact us" }
     ],
     "facebook": {
       "pageId": "155713471174031",
