@@ -76,6 +76,12 @@ function scorePhoto(photo) {
     if (alt.includes(term)) score -= 3;
   }
 
+  // Heavy penalty for excluded imagery (robots, prosthetics, etc.)
+  const excludedTerms = ['robot', 'robotic', 'prosthetic', 'cyborg', 'futuristic', 'bionic', 'android', 'humanoid', 'mechanical arm', 'artificial intelligence'];
+  for (const term of excludedTerms) {
+    if (alt.includes(term)) score -= 20;
+  }
+
   return score;
 }
 

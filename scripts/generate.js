@@ -46,6 +46,7 @@ Look for:
 - Trending topics the target audience is searching for right now
 - Seasonal or timely concerns
 - Common misconceptions being discussed in the media
+${site.topicConstraints ? `\nTOPIC CONSTRAINTS (MUST follow):\n${site.topicConstraints}` : ''}
 
 Already published (avoid these topics):
 ${titlesBlock}
@@ -105,6 +106,7 @@ SOURCE URLS FOUND DURING RESEARCH:
 ${research.sources.map(s => `- ${s.title}: ${s.url}`).join('\n') || 'No specific URLs found; use well-known authoritative organization URLs instead.'}
 
 Write an 800-1200 word article based on this research. Choose the most compelling topic from the brief.
+${site.topicConstraints ? `\nTOPIC CONSTRAINTS (MUST follow):\n${site.topicConstraints}\nIf the research brief only contains restricted topics, ignore it and write about a practical everyday topic instead.` : ''}
 
 OUTBOUND LINKS (MANDATORY):
 - Every claim backed by research MUST include an outbound markdown link to the source.
@@ -151,6 +153,7 @@ IMAGE SEARCH QUERY:
 - For other industries: use terms specific to the business type
 - AVOID generic lifestyle/portrait queries. The image should be relevant to the article topic.
 - Be specific: "chiropractor adjusting patient spine" is better than "people posture"
+${site.imageExclude?.length ? `- NEVER use search terms related to: ${site.imageExclude.join(', ')}. Keep imagery grounded in real clinical and wellness settings.` : ''}
 
 CRITICAL WRITING RULES:
 - NEVER use em dashes. Use commas, periods or semicolons instead.

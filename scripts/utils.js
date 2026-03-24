@@ -42,7 +42,11 @@ export function buildMarkdown(post, site, slug) {
     '---',
   ].join('\n');
 
-  return `${frontmatter}\n\n${post.body}\n`;
+  const disclaimer = site.disclaimer
+    ? `\n\n---\n\n*${site.disclaimer}*\n`
+    : '';
+
+  return `${frontmatter}\n\n${post.body}${disclaimer}\n`;
 }
 
 /**

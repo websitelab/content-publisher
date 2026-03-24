@@ -14,7 +14,8 @@
       { "path": "/web-design", "label": "our web design services" },
       { "path": "/google-business-profile", "label": "Google Business Profile setup" },
       { "path": "/contact", "label": "get in touch" }
-    ]
+    ],
+    "disclaimer": "The information in this article is general guidance only. Results may vary depending on your specific business needs and circumstances."
   },
   {
     "repo": "websitelab/mispineandjoint.com",
@@ -37,7 +38,10 @@
       "pageId": "155713471174031",
       "tokenEnvVar": "FB_PAGE_TOKEN_MSJC",
       "articlePath": "/articles"
-    }
+    },
+    "topicConstraints": "Stick to practical, everyday health and wellness topics: pain management, posture, stretching, exercise, injury prevention, seasonal wellness and recovery tips. Basic wearable technology (fitness trackers, step counters) is fine if relevant. Do NOT write about artificial intelligence, robotics, surgical robots, AI diagnostics, machine learning in healthcare, advanced medical technology or futuristic treatment methods.",
+    "imageExclude": ["robot", "robotic", "prosthetic", "artificial intelligence", "cyborg", "futuristic", "bionic", "android", "humanoid", "mechanical arm", "surgical robot"],
+    "disclaimer": "This article is for informational purposes only and is not a substitute for professional medical advice, diagnosis or treatment. Always consult with a qualified healthcare provider about your individual needs before starting any new treatment or exercise program."
   },
   {
     "repo": "websitelab/spineandsportsmi",
@@ -60,6 +64,9 @@
       "pageId": "123530313996598",
       "tokenEnvVar": "FB_PAGE_TOKEN_CSSC",
       "articlePath": "/articles"
-    }
+    },
+    "topicConstraints": "Stick to practical, everyday health and wellness topics: pain management, posture, stretching, exercise, injury prevention, seasonal wellness and recovery tips. Basic wearable technology (fitness trackers, step counters) is fine if relevant. Do NOT write about artificial intelligence, robotics, surgical robots, AI diagnostics, machine learning in healthcare, advanced medical technology or futuristic treatment methods.",
+    "imageExclude": ["robot", "robotic", "prosthetic", "artificial intelligence", "cyborg", "futuristic", "bionic", "android", "humanoid", "mechanical arm", "surgical robot"],
+    "disclaimer": "This article is for informational purposes only and is not a substitute for professional medical advice, diagnosis or treatment. Always consult with a qualified healthcare provider about your individual needs before starting any new treatment or exercise program."
   }
 ]
