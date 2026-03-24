@@ -163,7 +163,8 @@ auto-published (unless 24hr passes with no action).
     "internalLinks": [
       { "path": "/chiropractic", "label": "our chiropractic care" },
       { "path": "/physical-therapy", "label": "physical therapy services" },
-      { "path": "/massage-therapy", "label": "massage therapy" }
+      { "path": "/massage-therapy", "label": "massage therapy" },
+      { "path": "/contact", "label": "contact us" }
     ],
     "facebook": {
       "pageId": "155713471174031",
@@ -187,7 +188,11 @@ auto-published (unless 24hr passes with no action).
 | `businessName`   | (Optional) Override business name if different from author |
 | `reviewEmail`    | Email address that receives review notifications (to) |
 | `ccEmail`        | (Optional) CC address for review notifications        |
-| `internalLinks`  | Pages on the site to link to from articles (SEO)      |
+| `reviewGreeting` | Custom greeting in review email (e.g., "Hey Doc,")     |
+| `topicConstraints` | Topic restrictions passed to Gemini (e.g., no AI topics) |
+| `imageExclude`   | Keywords penalized in image scoring (-20 per match)    |
+| `disclaimer`     | Legal disclaimer appended to bottom of each article    |
+| `internalLinks`  | Pages on the site to link to from articles (must include /contact for CTA linking) |
 | `facebook`       | (Optional) Facebook Page auto-posting config          |
 | `facebook.pageId`     | Facebook Page ID (from Meta Developer App)       |
 | `facebook.tokenEnvVar`| Env var name holding the Page Access Token       |
@@ -275,6 +280,7 @@ These rules apply to ALL generated text.
 
 - Mid-article CTA after a compelling point (natural, not salesy)
 - Closing CTA encouraging the reader to book, call, or visit
+- Every CTA must contain a clickable markdown link (to contact page or relevant service)
 - Tied to the article's evidence, not generic marketing language
 
 ---
@@ -288,8 +294,9 @@ These rules apply to ALL generated text.
 3. Score remaining photos by relevance:
    - Clinical/treatment keywords in alt text (+2 each)
    - Landscape aspect ratio 1.4-2.0 (+3)
-   - Source width ≥ 2000px (+1)
+   - Source width >= 2000px (+1)
    - Generic portrait/selfie keywords (-3 each)
+   - Excluded imagery from `site.imageExclude` (-20 each, e.g., robot, prosthetic)
 4. Pick the highest-scored unused photo
 5. If all results are used, paginate to next page (up to 3 pages)
 
@@ -489,8 +496,10 @@ content-publisher/
 
 - **Duplicate topics** — query existing posts + accumulate titles in batch mode
 - **Duplicate images** — track used photo IDs, paginate through results
-- **Gemini rate limits** — 5-second delay between posts, retry once on 429/503
-- **Gemini bad JSON** — validate all required fields, skip post on persistent failure
+- **Gemini rate limits** — 5-second delay between posts, 3 retries with exponential backoff (3s/6s/12s)
+- **Gemini bad JSON** — strip markdown code fences, validate required fields, auto-fill image fields from title/industry, skip post only after 3 failures
+- **Missing imageAlt/imageSearchQuery** — auto-filled from post title and site industry instead of failing validation
+- **Partial success** — exit code 0 if at least one site succeeded; exit 1 only if ALL sites failed
 - **Research failure** — falls back to standard generation without grounding
 - **Pexels no results** — cascade: specific query → shorter query → industry fallback
 - **Subdirectory repos** — `imagePath` like `website/public/images/articles` handled correctly
