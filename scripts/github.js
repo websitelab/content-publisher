@@ -71,7 +71,7 @@ export async function checkExistingPR(repo) {
   );
 }
 
-export async function getVercelPreviewUrl(repo, commitSha, maxAttempts = 10) {
+export async function getVercelPreviewUrl(repo, commitSha, maxAttempts = 5) {
   const { owner, repo: repoName } = parseOwnerRepo(repo);
 
   for (let i = 0; i < maxAttempts; i++) {

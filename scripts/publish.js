@@ -24,7 +24,6 @@ import { slugify, buildMarkdown, log, sleep } from './utils.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DRY_RUN = process.argv.includes('--dry-run');
 const DELAY_BETWEEN_POSTS = 5000;
-const DELAY_BETWEEN_SITES = 3000;
 
 function parseCount() {
   const idx = process.argv.indexOf('--count');
@@ -207,18 +206,8 @@ async function main() {
 
   console.log(`Processing ${sites.length} site(s)\n`);
 
-  const allResults = [];
-
-  for (let i = 0; i < sites.length; i++) {
-    const results = await processSite(sites[i], count);
-    allResults.push(...results);
-
-    // Delay between sites
-    if (i < sites.length - 1) {
-      log('publisher', `Waiting ${DELAY_BETWEEN_SITES / 1000}s before next site...`);
-      await sleep(DELAY_BETWEEN_SITES);
-    }
-  }
+  const siteResults = await Promise.all(sites.map(site => processSite(site, count)));
+  const allResults = siteResults.flat();
 
   // Summary
   console.log('\n' + '='.repeat(50));
@@ -247,6 +236,8 @@ async function main() {
   if (failed.length > 0 && succeeded.length === 0) {
     process.exit(1);
   }
+
+  process.exit(0);
 }
 
 main().catch(err => {
