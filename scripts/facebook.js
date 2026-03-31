@@ -22,6 +22,7 @@ async function sendFailureAlert(site, postTitle, error) {
 <p><strong>Post:</strong> ${postTitle}</p>
 <p><strong>Error:</strong> ${error}</p>
 <p>The blog post is live — only the Facebook share failed. You may want to post it manually.</p>`,
+      tracking: { click: false },
     });
   } catch (emailErr) {
     log(site, `Facebook: could not send failure alert email — ${emailErr.message}`);

@@ -143,6 +143,7 @@ export async function sendReviewEmail(site, post, prUrl, previewUrl, slug, { isR
       to: site.reviewEmail,
       subject,
       html,
+      tracking: { click: false },
     };
 
     if (site.ccEmail) {
