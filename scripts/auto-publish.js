@@ -25,9 +25,16 @@ async function main() {
   for (const site of sites) {
     const [owner, repo] = site.repo.split('/');
 
-    const { data: prs } = await octokit.rest.pulls.list({
-      owner, repo, state: 'open',
-    });
+    let prs;
+    try {
+      const { data } = await octokit.rest.pulls.list({
+        owner, repo, state: 'open',
+      });
+      prs = data;
+    } catch (err) {
+      console.warn(`[${site.siteUrl}] Skipping — failed to fetch PRs: ${err.message}`);
+      continue;
+    }
 
     const blogPRs = prs.filter(pr =>
       pr.labels.some(l => l.name === 'content-publisher')
